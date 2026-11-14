@@ -25,11 +25,13 @@ class Daemon:
         *,
         clock: Callable[[], float] = time.monotonic,
         wait: Optional[Callable[[float], bool]] = None,
+        tracker=None,
     ) -> None:
         self.config = config
         self._clock = clock
         self._stop_event = threading.Event()
         self._wait = wait if wait is not None else self._stop_event.wait
+        self.tracker = tracker
 
     def request_stop(self, signum=None, _frame=None) -> None:
         """Signal-Handler: Daemon fährt kontrolliert herunter."""
@@ -54,6 +56,8 @@ class Daemon:
             if now >= next_heartbeat:
                 log.info("Heartbeat: FamilyPC %s aktiv, Uptime %.0f s", __version__, now - started)
                 next_heartbeat = now + cfg.heartbeat_interval_seconds
+            if self.tracker is not None:
+                self.tracker.tick()
             # In kleinen Schritten warten, damit Stopps sofort reagieren.
             self._wait(timeout=min(1.0, max(0.0, next_heartbeat - self._clock())))
 

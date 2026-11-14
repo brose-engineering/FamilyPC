@@ -62,6 +62,9 @@ python3 -m venv .venv
 ├── familypc/                  # Daemon-Paket
 │   ├── config.py              # Config-Schema (pydantic) & Laden von /etc/familypc/config.yaml
 │   ├── daemon.py              # Hauptschleife, Heartbeat, sauberes Herunterfahren
+│   ├── sessions.py            # Session-Erkennung via loginctl (FAM-4)
+│   ├── tracker.py             # Zeitverbrauch pro Konto (FAM-4)
+│   ├── usage.py               # SQLite-Persistenz usage.db (FAM-4)
 │   └── __main__.py            # CLI-Einstieg (python -m familypc)
 ├── config/config.yaml         # Beispiel-Config
 ├── systemd/familypc.service   # systemd-Unit (root)

@@ -21,11 +21,14 @@ Details: `docs/FAM-2_VM_TEST.md`
 
 ## FAM-4 — Session-Tracking & Zeitverbrauch
 
-- [ ] `kind1` grafisch anmelden, 10 min warten → `sqlite3 /var/lib/familypc/usage.db` zeigt ca. 10 min für kind1
-- [ ] Reboot → Verbrauch bleibt erhalten (reboot-sicher)
-- [ ] reine SSH-Session von kind1 zählt **nicht**
-- [ ] Fast-User-Switching kind1 ↔ kind2 → beide Sessions zählen weiter
-- [ ] Reset um 00:00 (konfigurierbar)
+Details: `docs/FAM-4_VM_TEST.md`. Query: `sudo sqlite3 /var/lib/familypc/usage.db "SELECT user, round(seconds,1) FROM usage WHERE day='$(date +%F)';"`
+
+- [ ] `kind1` grafisch anmelden, 10 min warten → DB zeigt ca. 600 s für kind1 (±10 s Poll-Intervall)
+- [ ] Reboot → Verbrauch bleibt erhalten (reboot-sicher, Tabelle `usage(day, user, seconds)`)
+- [ ] reine SSH-Session von kind1 zählt **nicht** (`count_remote_sessions: false`)
+- [ ] Fast-User-Switching kind1 ↔ kind2 → beide zählen weiter (`count_inactive_sessions: true`)
+- [ ] `root`/Daemon-Sessions tauchen nicht auf (`excluded_users`)
+- [ ] Reset um `reset_hour` (Default 00:00) — neuer Nutzungstag = frischer Zähler
 
 ## FAM-5 — Internet-Sperre pro Konto (nftables)
 

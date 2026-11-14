@@ -14,6 +14,9 @@ from pathlib import Path
 
 from .config import DEFAULT_CONFIG_PATH, ConfigError, load_config
 from .daemon import Daemon
+from .sessions import Logind
+from .tracker import SessionTracker
+from .usage import UsageStore
 
 EXIT_OK = 0
 EXIT_CONFIG_ERROR = 2
@@ -60,7 +63,12 @@ def main(argv=None) -> int:
 
     logging.getLogger().setLevel(config.daemon.log_level)
 
-    daemon = Daemon(config)
+    tracker = None
+    if config.tracking is not None and config.tracking.enabled:
+        store = UsageStore(config.daemon.state_dir / "usage.db")
+        tracker = SessionTracker(config.tracking, store, Logind())
+
+    daemon = Daemon(config, tracker=tracker)
     signal.signal(signal.SIGTERM, daemon.request_stop)
     signal.signal(signal.SIGINT, daemon.request_stop)
     return daemon.run()

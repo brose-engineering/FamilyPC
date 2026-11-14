@@ -6,7 +6,16 @@
 daemon:
   log_level: INFO                  # DEBUG | INFO | WARNING | ERROR | CRITICAL
   heartbeat_interval_seconds: 60   # Heartbeat-Eintrag ins journald
-  state_dir: /var/lib/familypc     # SQLite-DB für Zeitverbrauch (ab FAM-4)
+  state_dir: /var/lib/familypc     # SQLite-DB für Zeitverbrauch (usage.db)
+
+# Session-Tracking (FAM-4). Sektion komplett weglassen = Tracking deaktiviert.
+tracking:
+  enabled: true
+  poll_interval_seconds: 10        # logind-Abfrage-Intervall (Genauigkeit des Verbrauchs)
+  reset_hour: 0                    # taeglicher Reset um 00:00 Uhr (konfigurierbar)
+  count_remote_sessions: false     # reine SSH-Sessions zaehlen nicht
+  count_inactive_sessions: true    # Fast-User-Switching: weggeswitchte Sessions zaehlen weiter
+  excluded_users: ["root"]         # Admin-/Daemon-Prozesse zaehlen nicht
 
 # Pro-Konto-Regeln (ab FAM-4/5/7/8/9). Leer = keine Einschränkungen.
 accounts: {}

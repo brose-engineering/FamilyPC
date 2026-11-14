@@ -76,10 +76,24 @@ class DaemonConfig(BaseModel):
     state_dir: Path = Path("/var/lib/familypc")  # SQLite-DB für Zeitverbrauch (ab FAM-4)
 
 
+class TrackingConfig(BaseModel):
+    """Session-Tracking (FAM-4). Sektion fehlt komplett = Tracking deaktiviert."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = True
+    poll_interval_seconds: int = Field(default=10, ge=1, le=300)  # logind-Abfrage-Intervall
+    reset_hour: int = Field(default=0, ge=0, le=23)  # taeglicher Reset um reset_hour Uhr
+    count_remote_sessions: bool = False  # reine SSH-Sessions zaehlen nicht (Default)
+    count_inactive_sessions: bool = True  # Fast-User-Switching zaehlt weiter (Default)
+    excluded_users: list[str] = Field(default_factory=lambda: ["root"])  # Admin-/Daemon-Prozesse
+
+
 class Config(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     daemon: DaemonConfig = Field(default_factory=DaemonConfig)
+    tracking: Optional[TrackingConfig] = None  # None = Feature deaktiviert
     accounts: dict[str, AccountConfig] = Field(default_factory=dict)
 
 
