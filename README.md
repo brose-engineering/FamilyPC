@@ -17,8 +17,6 @@ Daemon für **Linux Mint**, der pro Nutzerkonto die PC-Nutzung steuert:
 - **Nutzungszeitfenster** je Wochentag — Login außerhalb wird verweigert, bei Fensterende Logout mit Vorwarnung
 - **Internetzugang** pro Konto an/aus plus **Internet-Tagesbudget** — der PC bleibt auch ohne Internet nutzbar
 
-Backlog & Akzeptanzkriterien: Jira-Projekt **FAM** (brose-eng.atlassian.net). Details siehe `AGENTS.md`.
-
 ## Installation (auf der Mint-VM, als root)
 
 ```bash
