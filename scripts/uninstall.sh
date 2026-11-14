@@ -13,11 +13,17 @@ echo "==> Service stoppen und deaktivieren ..."
 systemctl disable --now familypc.service 2>/dev/null || true
 systemctl reset-failed familypc.service 2>/dev/null || true
 
+echo "==> PAM-Hook entfernen ..."
+if [[ -f /etc/pam.d/common-auth ]]; then
+  sed -i '/familypc-pam-check/d' /etc/pam.d/common-auth
+fi
+
 echo "==> Dateien entfernen ..."
 rm -f /etc/systemd/system/familypc.service
 systemctl daemon-reload
 rm -rf /opt/familypc
 rm -rf /var/lib/familypc   # inkl. SQLite-Nutzungsdaten
 rm -rf /etc/familypc      # inkl. config.yaml
+rm -rf /run/familypc      # Control-Socket
 
 echo "FamilyPC wurde vollstaendig entfernt (Unit, /opt/familypc, /var/lib/familypc, /etc/familypc)."

@@ -41,6 +41,9 @@ Konfiguration: `/etc/familypc/config.yaml` (Schema in `familypc/config.py`, vali
 
 - Stoppt der Daemon (egal warum), greifen **keine** Sperren mehr: Der PC bleibt voll nutzbar,
   Internet-Sperren (ab FAM-5) werden beim Stop entfernt. Es gibt kein Lockout-Risiko.
+- Der PAM-Hook (`pam_exec` in `/etc/pam.d/common-auth`) fragt den Daemon vor jedem Login;
+  ist der Daemon nicht erreichbar, ist der Login **offen** (fail-open). `protected_users`
+  (Default: `parent`) werden niemals verweigert.
 - Ist die Config ungültig, beendet sich der Daemon mit **Exit-Code 2** und Klartext-Meldung im
   journald. Die systemd-Unit wertet Exit 2 als sauberes Ende (`SuccessExitStatus=2`) —
   dadurch entsteht **kein Restart-Loop** bei Config-Fehlern. Nach dem Fix in
@@ -65,6 +68,10 @@ python3 -m venv .venv
 │   ├── sessions.py            # Session-Erkennung via loginctl (FAM-4)
 │   ├── tracker.py             # Zeitverbrauch pro Konto (FAM-4)
 │   ├── usage.py               # SQLite-Persistenz usage.db (FAM-4)
+│   ├── enforce.py             # Policy: Budget/Fenster, Warnungen, Logout (FAM-7/8)
+│   ├── notify.py              # Desktop-Notification via D-Bus + loginctl terminate-user
+│   ├── control.py             # Unix-Socket für PAM-Hook (Login-Verweigerung)
+│   ├── pam_check.py           # pam_exec-Skript (fail-open bei Daemon-Ausfall)
 │   └── __main__.py            # CLI-Einstieg (python -m familypc)
 ├── config/config.yaml         # Beispiel-Config
 ├── systemd/familypc.service   # systemd-Unit (root)

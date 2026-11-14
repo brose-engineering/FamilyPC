@@ -17,6 +17,13 @@ tracking:
   count_inactive_sessions: true    # Fast-User-Switching: weggeswitchte Sessions zaehlen weiter
   excluded_users: ["root", "lightdm"]  # Admin-/Daemon-/System-User (uid < 1000 zaehlt nie)
 
+# Durchsetzung (FAM-7 Tagesbudget + FAM-8 Fenster). Sektion weglassen = deaktiviert.
+enforcement:
+  enabled: true
+  warn_minutes: [10, 5]          # Warn-Notifications bei 10 und 5 Minuten Restzeit
+  window_prewarning_minutes: 10  # Vorwarnung vor Fensterende
+  protected_users: ["parent"]    # Admin-Konto wird niemals eingesperrt
+
 # Pro-Konto-Regeln (ab FAM-4/5/7/8/9). Leer = keine Einschränkungen.
 accounts: {}
   # kind1:

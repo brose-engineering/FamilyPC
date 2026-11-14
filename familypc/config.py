@@ -89,11 +89,23 @@ class TrackingConfig(BaseModel):
     excluded_users: list[str] = Field(default_factory=lambda: ["root", "lightdm"])  # Admin-/Daemon-/System-User
 
 
+class EnforcementConfig(BaseModel):
+    """Durchsetzung (FAM-7 Budget + FAM-8 Fenster). Sektion fehlt = deaktiviert."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = True
+    warn_minutes: list[int] = Field(default_factory=lambda: [10, 5])  # FAM-7 Warnschwellen
+    window_prewarning_minutes: int = Field(default=10, ge=0, le=120)  # FAM-8 Vorwarnung
+    protected_users: list[str] = Field(default_factory=lambda: ["parent"])  # niemals sperren
+
+
 class Config(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     daemon: DaemonConfig = Field(default_factory=DaemonConfig)
     tracking: Optional[TrackingConfig] = None  # None = Feature deaktiviert
+    enforcement: Optional[EnforcementConfig] = None  # None = Feature deaktiviert
     accounts: dict[str, AccountConfig] = Field(default_factory=dict)
 
 

@@ -53,6 +53,21 @@ chmod 0750 "$STATE_DIR"
 echo "==> Config validieren ..."
 "$VENV/bin/python" -m familypc --config "$CONFIG_FILE" --check-config
 
+echo "==> PAM-Hook eintragen (Login-Verweigerung, fail-open) ..."
+PAM_FILE=/etc/pam.d/common-auth
+PAM_LINE='auth required pam_exec.so quiet seteuid /opt/familypc/venv/bin/familypc-pam-check # familypc-pam-check'
+if grep -q 'familypc-pam-check' "$PAM_FILE" 2>/dev/null; then
+  echo "    PAM-Zeile bereits vorhanden."
+else
+  # vor die erste auth-Zeile einfügen
+  tmp=$(mktemp)
+  awk -v line="$PAM_LINE" 'BEGIN{done=0} /^auth[ \t]/ && !done {print line; done=1} {print}' "$PAM_FILE" > "$tmp"
+  cat "$tmp" > "$PAM_FILE" && rm -f "$tmp"
+  echo "    PAM-Zeile in $PAM_FILE eingetragen."
+fi
+# Hook muss ohne PAM_USER fehlerfrei exit 0 liefern (fail-open), sonst Lockout-Risiko
+"$VENV/bin/familypc-pam-check" </dev/null || true
+
 echo "==> systemd-Unit installieren und Service starten ..."
 install -m 0644 "$UNIT_SRC" "$UNIT_DST"
 systemctl daemon-reload

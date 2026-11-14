@@ -38,18 +38,18 @@ Details: `docs/FAM-4_VM_TEST.md`. Query: `sudo sqlite3 /var/lib/familypc/usage.d
 - [ ] `systemctl stop familypc` → Sperre weg (fail-open, kein Lockout)
 - [ ] Koexistenz mit ufw geprüft
 
-## FAM-7 — Tagesbudget pro Konto
+## FAM-7 + FAM-8 — Tagesbudget & Nutzungsfenster
 
-- [ ] kind1 mit `daily_budget_minutes: 15` → Desktop-Notification bei 10 und 5 min Restzeit
-- [ ] bei 0 min → Logout (`loginctl terminate-user`), Re-Login am selben Tag blockiert
+Details: `docs/FAM-7_FAM-8_VM_TEST.md` (Config-Beispiel, PAM-Checks im Journal).
+
+- [ ] kind1 mit `daily_budget_minutes: 15` → Notification bei 10 und 5 min Restzeit (Desktop von kind1)
+- [ ] bei 0 min → Logout (`loginctl terminate-user`); Re-Login am selben Tag verweigert (PAM: `DENY Tagesbudget aufgebraucht`)
 - [ ] nach Mitternacht (Reset) → Login wieder möglich
-
-## FAM-8 — Nutzungsfenster pro Wochentag
-
-- [ ] Fenster heute z. B. 15:00–19:00 → Login um 14:00 wird verweigert + Hinweis-Notification
+- [ ] Fenster heute z. B. 15:00–23:00 → Login um 14:00 verweigert (`DENY ausserhalb des Nutzungsfensters`)
 - [ ] Login innerhalb des Fensters möglich
-- [ ] Fensterende während laufender Session → Vorwarnung (Default 10 min) → Logout
-- [ ] reboot-sicher
+- [ ] Fensterende während Session → Vorwarnung (10 min) → Logout
+- [ ] `parent` (protected_users) wird nie eingesperrt; Daemon-Stop = fail-open (Login erlaubt)
+- [ ] reboot-sicher; uninstall.sh entfernt PAM-Zeile aus /etc/pam.d/common-auth
 
 ## FAM-9 — Internet-Tagesbudget pro Konto
 

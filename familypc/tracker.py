@@ -34,6 +34,10 @@ class SessionTracker:
         self._last_query: datetime | None = None
         self._cached_users: set[str] = set()
 
+    @property
+    def last_active_users(self) -> set[str]:
+        return self._active_users
+
     def tick(self) -> None:
         now = self._now()
         if self._last_tick is None:

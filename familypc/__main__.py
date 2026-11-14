@@ -13,7 +13,9 @@ import sys
 from pathlib import Path
 
 from .config import DEFAULT_CONFIG_PATH, ConfigError, load_config
+from .control import ControlServer
 from .daemon import Daemon
+from .enforce import Enforcer
 from .sessions import Logind
 from .tracker import SessionTracker
 from .usage import UsageStore
@@ -63,12 +65,27 @@ def main(argv=None) -> int:
 
     logging.getLogger().setLevel(config.daemon.log_level)
 
+    store = None
     tracker = None
     if config.tracking is not None and config.tracking.enabled:
         store = UsageStore(config.daemon.state_dir / "usage.db")
         tracker = SessionTracker(config.tracking, store, Logind())
 
-    daemon = Daemon(config, tracker=tracker)
+    enforcer = None
+    control = None
+    if config.enforcement is not None and config.enforcement.enabled:
+        if store is None:
+            store = UsageStore(config.daemon.state_dir / "usage.db")
+        reset_hour = config.tracking.reset_hour if config.tracking else 0
+        enforcer = Enforcer(
+            config.enforcement,
+            config.accounts,
+            store,
+            reset_hour=reset_hour,
+        )
+        control = ControlServer(enforcer)
+
+    daemon = Daemon(config, tracker=tracker, enforcer=enforcer, control=control)
     signal.signal(signal.SIGTERM, daemon.request_stop)
     signal.signal(signal.SIGINT, daemon.request_stop)
     return daemon.run()

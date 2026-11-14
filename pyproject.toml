@@ -20,6 +20,7 @@ dev = [
 
 [project.scripts]
 familypc = "familypc.__main__:main"
+familypc-pam-check = "familypc.pam_check:main"
 
 [tool.setuptools.packages.find]
 include = ["familypc*"]

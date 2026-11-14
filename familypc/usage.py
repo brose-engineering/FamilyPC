@@ -16,6 +16,12 @@ CREATE TABLE IF NOT EXISTS usage (
     seconds REAL NOT NULL DEFAULT 0,
     PRIMARY KEY (day, user)
 );
+CREATE TABLE IF NOT EXISTS alerts (
+    day  TEXT NOT NULL,
+    user TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    PRIMARY KEY (day, user, kind)
+);
 """
 
 
@@ -55,6 +61,20 @@ class UsageStore:
             "SELECT user, seconds FROM usage WHERE day = ?", (day.isoformat(),)
         ).fetchall()
         return {user: float(seconds) for user, seconds in rows}
+
+    def has_alert(self, user: str, day: date, kind: str) -> bool:
+        row = self._conn.execute(
+            "SELECT 1 FROM alerts WHERE day = ? AND user = ? AND kind = ?",
+            (day.isoformat(), user, kind),
+        ).fetchone()
+        return row is not None
+
+    def add_alert(self, user: str, day: date, kind: str) -> None:
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO alerts(day, user, kind) VALUES (?, ?, ?)",
+                (day.isoformat(), user, kind),
+            )
 
     def close(self) -> None:
         self._conn.close()
