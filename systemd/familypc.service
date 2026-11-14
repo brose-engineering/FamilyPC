@@ -1,8 +1,12 @@
 [Unit]
 Description=FamilyPC Daemon (Nutzungszeiten & Internet-Sperre pro Nutzerkonto)
-Documentation=https://brose-eng.atlassian.net (Projekt FAM)
+Documentation=https://brose-eng.atlassian.net
 After=systemd-logind.service network.target
 Wants=systemd-logind.service
+# Sicherheitsnetz gegen Restart-Loops (z. B. wiederholte Abstuerze):
+# StartLimit* gehoeren ab systemd 230 in die [Unit]-Sektion.
+StartLimitIntervalSec=120
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -15,9 +19,6 @@ ExecStart=/opt/familypc/venv/bin/python -m familypc --config /etc/familypc/confi
 SuccessExitStatus=2
 Restart=on-failure
 RestartSec=5s
-# Sicherheitsnetz gegen Restart-Loops (z. B. wiederholte Abstürze):
-StartLimitIntervalSec=120
-StartLimitBurst=5
 # stdout/stderr gehen automatisch ins journald (Heartbeat siehe journalctl -u familypc)
 StandardOutput=journal
 StandardError=journal
