@@ -7,12 +7,16 @@ Voraussetzung: Test-VM mit `parent`/`kind1`/`kind2` (SETUP.md), FamilyPC install
 DB: `/var/lib/familypc/usage.db`, Tabelle `usage(day, user, seconds)` — Nutzungstag
 = lokales Datum ab `reset_hour` (Default 00:00).
 
-Hilfreiches Query (heute, lokales Datum):
+Hilfreiches Query (heute, lokales Datum) — **als parent/admin ausführen** (kind1/kind2 haben
+kein sudo; die DB unter /var/lib/familypc ist root-only):
 
 ```bash
 TODAY=$(date +%F)
 sudo sqlite3 /var/lib/familypc/usage.db "SELECT user, round(seconds,1) FROM usage WHERE day='$TODAY' ORDER BY user;"
 ```
+
+`sqlite3` selbst installieren (falls nicht schon via SETUP.md passiert): als parent
+`sudo apt install -y sqlite3`.
 
 ## Schritte
 
