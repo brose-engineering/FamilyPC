@@ -22,6 +22,8 @@ def ask_daemon(user: str, socket_path: str | None = None, timeout: float = 2.0) 
             s.connect(socket_path)
             s.sendall(f"{user}\n".encode())
             answer = s.makefile("r").readline().strip()
+        if not answer:
+            return True, "leere Antwort (fail-open)"
         if answer.startswith("ALLOW"):
             return True, "ok"
         return False, answer.removeprefix("DENY ").strip() or "verweigert"

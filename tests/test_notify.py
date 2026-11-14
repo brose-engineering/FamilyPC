@@ -12,6 +12,7 @@ def test_notify_kommando_enthält_session_bus_und_text():
     assert "kind1" in cmd
     assert "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1002/bus" in cmd
     assert "org.freedesktop.Notifications" in cmd and "Notify" in cmd
+    assert "susssasa{sv}i" in cmd  # Signatur: s app_name, u id, s icon, s summary, s body, as actions, a{sv} hints, i timeout
     assert "Titel" in cmd and "Body" in cmd
 
 

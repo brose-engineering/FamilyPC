@@ -56,12 +56,21 @@ class ControlServer:
                     if not user:
                         conn.sendall(b"DENY empty-user\n")
                         continue
-                    allowed, reason = self.enforcer.may_login(user, self._now())
-                    verdict = "ALLOW" if allowed else f"DENY {reason}"
+                    try:
+                        allowed, reason = self.enforcer.may_login(user, self._now())
+                        verdict = "ALLOW" if allowed else f"DENY {reason}"
+                    except Exception as exc:
+                        # fail-open: bei internem Fehler Login erlauben
+                        log.warning("PAM-Check %s fehlgeschlagen, erlaube (fail-open): %s", user, exc)
+                        verdict = "ALLOW fail-open"
                     conn.sendall(f"{verdict}\n".encode())
                     log.info("PAM-Check %s -> %s", user, verdict)
             except Exception as exc:
                 log.warning("Control-Verbindung fehlgeschlagen: %s", exc)
+                try:
+                    conn.sendall(b"ALLOW fail-open\n")
+                except OSError:
+                    pass
 
     def stop(self) -> None:
         self._stopping.set()

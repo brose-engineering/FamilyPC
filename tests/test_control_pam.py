@@ -51,6 +51,45 @@ def test_pam_check_fail_open_ohne_daemon(tmp_path):
     assert pam_main() == 0
 
 
+def test_control_server_fail_open_bei_enforcer_fehler(tmp_path):
+    class BrokenEnforcer:
+        def may_login(self, user, now):
+            raise RuntimeError("sqlite thread bug")
+
+    sock = str(tmp_path / "control.sock")
+    server = ControlServer(BrokenEnforcer(), socket_path=sock, now_fn=lambda: datetime(2026, 11, 16, 14, 0))
+    server.start()
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.settimeout(2)
+            s.connect(sock)
+            s.sendall(b"kind1\n")
+            assert s.makefile("r").readline().strip() == "ALLOW fail-open"
+    finally:
+        server.stop()
+
+
+def test_usage_store_thread_safe(tmp_path):
+    import threading
+    from familypc.usage import UsageStore
+    from datetime import date
+
+    store = UsageStore(tmp_path / "usage.db")
+    day = date(2026, 11, 16)
+
+    def writer():
+        for _ in range(50):
+            store.add("kind1", day, 1.0)
+
+    threads = [threading.Thread(target=writer) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert store.get("kind1", day) == 200.0
+    store.close()
+
+
 def test_pam_check_deny_bei_daemon(tmp_path, monkeypatch):
     import familypc.pam_check as pam_mod
 

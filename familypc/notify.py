@@ -47,7 +47,7 @@ def send_notification(
         "busctl", "--user", "call",
         "org.freedesktop.Notifications", "/org/freedesktop/Notifications",
         "org.freedesktop.Notifications", "Notify",
-        "sussasa{sv}i",
+        "susssasa{sv}i",
         "FamilyPC", "0", "", summary, body, "[]", "{}", str(timeout_ms),
     ]
     try:
