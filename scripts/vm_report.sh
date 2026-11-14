@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
 # FamilyPC vm_report.sh — sammelt Diagnose-Daten der Test-VM in eine Datei.
-# Ohne gemeinsame Zwischenablage: --upload laedt den Report zu 0x0.st hoch,
-# die ausgegebene URL kann hier im Chat gepostet werden (Agent liest sie aus).
-#
-# Aufruf in der VM:
-#   scripts/vm_report.sh              # schreibt /tmp/familypc-report-<ts>.txt
-#   scripts/vm_report.sh --upload     # zusaetzlich Upload, gibt die URL aus
+# Output teilen ohne gemeinsame Zwischenablage:
+#   scripts/vm_report.sh --jira FAM-2    # Report als Anhang an das Jira-Ticket (empfohlen,
+#                                        # braucht JIRA_EMAIL/JIRA_API_TOKEN in der Umgebung)
+#   scripts/vm_report.sh --upload        # Report zu einem Paste-Dienst (uguu.se, Fallback termbin),
+#                                        # URL wird ausgegeben und hier im Chat gepostet
+#   scripts/vm_report.sh                # nur lokale Datei unter /tmp
 set -uo pipefail
 
 OUT="/tmp/familypc-report-$(date +%Y%m%d-%H%M%S).txt"
-UPLOAD=0
-[[ "${1:-}" == "--upload" ]] && UPLOAD=1
+MODE="local"
+JIRA_TICKET=""
+case "${1:-}" in
+  --upload) MODE="upload" ;;
+  --jira)   MODE="jira"; JIRA_TICKET="${2:-}"; [[ -n "$JIRA_TICKET" ]] || { echo "Usage: $0 --jira <TICKET-KEY>" >&2; exit 1; } ;;
+  "")       MODE="local" ;;
+  *)        echo "Usage: $0 [--upload | --jira <TICKET-KEY>]" >&2; exit 1 ;;
+esac
 
 {
   echo "===== FamilyPC VM-Report $(date -Is) ====="
@@ -35,8 +41,35 @@ UPLOAD=0
 } > "$OUT" 2>&1
 
 echo "Report: $OUT ($(wc -l < "$OUT") Zeilen)"
-if [[ $UPLOAD -eq 1 ]]; then
-  url=$(curl -s --max-time 30 -F "file=@$OUT" https://0x0.st)
-  echo "URL: $url"
-  echo "-> URL hier im Chat posten, ich lese den Report direkt aus."
-fi
+
+upload_paste() {
+  # 1) uguu.se (multipart, JSON-Antwort mit URL)
+  local resp url
+  if resp=$(curl -s --max-time 30 -F "files[]=@$OUT" https://uguu.se/upload.php 2>/dev/null); then
+    url=$(printf '%s' "$resp" | python3 -c "import json,sys; print(json.load(sys.stdin)['files'][0]['url'])" 2>/dev/null || true)
+    if [[ -n "$url" ]]; then echo "$url"; return 0; fi
+  fi
+  # 2) termbin.com via netcat
+  if command -v nc >/dev/null 2>&1; then
+    url=$(nc -w 15 termbin.com 9999 < "$OUT" 2>/dev/null | tr -d '\0[:space:]')
+    if [[ "$url" == https://* ]]; then echo "$url"; return 0; fi
+  fi
+  return 1
+}
+
+case "$MODE" in
+  upload)
+    if url=$(upload_paste); then
+      echo "URL: $url"
+      echo "-> URL hier im Chat posten, ich lese den Report direkt aus."
+    else
+      echo "Paste-Upload fehlgeschlagen (uguu.se + termbin)." >&2
+      echo "Alternative: --jira <TICKET> (Anhang am Jira-Ticket) oder siehe docs/VM_REPORT.md" >&2
+      exit 1
+    fi
+    ;;
+  jira)
+    "$(dirname "${BASH_SOURCE[0]}")/jira_attach.sh" "$JIRA_TICKET" "$OUT"
+    echo "-> Anhang am Ticket $JIRA_TICKET in Jira; ich lese ihn von dort."
+    ;;
+esac

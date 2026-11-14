@@ -5,8 +5,8 @@ Snapshot „familypc-basis", dann `sudo ~/FamilyPC/scripts/install.sh`.
 
 Testkonten: `parent` (sudo), `kind1`, `kind2` — Passwort jeweils `familypc`.
 
-**Output teilen ohne gemeinsame Zwischenablage:** `scripts/vm_report.sh --upload`
-→ URL posten (Details in `docs/VM_REPORT.md`).
+**Output teilen ohne gemeinsame Zwischenablage:** `scripts/vm_report.sh --jira FAM-x`
+→ Report als Anhang am Jira-Ticket (Details in `docs/VM_REPORT.md`).
 
 ## FAM-2 — Projekt-Skeleton & Daemon-Sockel
 
