@@ -38,6 +38,14 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
   install -m 0640 -o root -g root "$SRC_DIR/config/config.yaml" "$CONFIG_FILE"
 else
   echo "    $CONFIG_FILE existiert bereits, wird nicht ueberschrieben."
+  # Upgrade-Hinweis: Top-Level-Sektionen der Beispiel-Config, die in der bestehenden fehlen
+  missing=$(comm -23 \
+    <(grep -oE '^[a-z_]+:' "$SRC_DIR/config/config.yaml" | sort -u) \
+    <(grep -oE '^[a-z_]+:' "$CONFIG_FILE" | sort -u) | tr -d ':' | tr '\n' ' ' || true)
+  if [[ -n "${missing// /}" ]]; then
+    echo "    Hinweis: bestehende Config kennt folgende Sektion(en) noch nicht: $missing"
+    echo "            Vorlage siehe $SRC_DIR/config/config.yaml (z. B. 'tracking' ab FAM-4)."
+  fi
 fi
 mkdir -p "$STATE_DIR"
 chmod 0750 "$STATE_DIR"

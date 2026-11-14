@@ -40,7 +40,7 @@ class Logind:
         self._run = runner or _default_runner
 
     def list_sessions(self) -> list[SessionInfo]:
-        out = self._run(["loginctl", "list-sessions", "--no-ledger", "--no-pager"])
+        out = self._run(["loginctl", "list-sessions", "--no-pager"])
         sessions: list[SessionInfo] = []
         for line in out.splitlines():
             parts = line.split()
