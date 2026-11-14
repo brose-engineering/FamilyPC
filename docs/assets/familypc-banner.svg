@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" width="1200" height="420" role="img" aria-label="FamilyPC Banner: PC mit Uhr, Schutzschild und WLAN-Sperre">
+  <defs>
+    <linearGradient id="bg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1200" y2="420">
+      <stop offset="0" stop-color="#0B1220"/>
+      <stop offset="0.55" stop-color="#141B34"/>
+      <stop offset="1" stop-color="#2A1E5C"/>
+    </linearGradient>
+    <linearGradient id="title" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#A5B4FC"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#101A30"/>
+      <stop offset="1" stop-color="#0B1220"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#818CF8"/>
+    </linearGradient>
+    <linearGradient id="budget" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#34D399"/>
+      <stop offset="1" stop-color="#FBBF24"/>
+    </linearGradient>
+    <linearGradient id="shieldFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4ADE80"/>
+      <stop offset="1" stop-color="#16A34A"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#6366F1" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#6366F1" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="420" fill="url(#bg)"/>
+  <circle cx="960" cy="210" r="270" fill="url(#glow)"/>
+
+  <!-- Sterne -->
+  <g fill="#94A3B8" opacity="0.55">
+    <circle cx="70" cy="55" r="2"/>
+    <circle cx="210" cy="40" r="1.6"/>
+    <circle cx="420" cy="70" r="2"/>
+    <circle cx="610" cy="45" r="1.6"/>
+    <circle cx="700" cy="330" r="2"/>
+    <circle cx="330" cy="360" r="1.6"/>
+    <circle cx="120" cy="380" r="2"/>
+    <circle cx="520" cy="120" r="1.5"/>
+    <circle cx="1150" cy="50" r="2"/>
+    <circle cx="1050" cy="390" r="1.6"/>
+  </g>
+
+  <!-- Titel -->
+  <text x="80" y="180" font-family="Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="76" font-weight="800" fill="url(#title)">FamilyPC</text>
+  <text x="84" y="232" font-family="Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="27" fill="#C7D2FE">Nutzungszeiten &amp; Internet-Sperre pro Nutzerkonto</text>
+  <text x="84" y="272" font-family="Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="18" fill="#7C8DB0">Daemon für Linux Mint · systemd · Python 3.10+ · fail-open</text>
+
+  <!-- Feature-Chips -->
+  <g font-family="Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" fill="#A5B4FC">
+    <rect x="84" y="308" width="122" height="36" rx="18" fill="#16213C" stroke="#2E3A5C"/>
+    <text x="145" y="331" text-anchor="middle">Tagesbudget</text>
+    <rect x="218" y="308" width="110" height="36" rx="18" fill="#16213C" stroke="#2E3A5C"/>
+    <text x="273" y="331" text-anchor="middle">Zeitfenster</text>
+    <rect x="340" y="308" width="150" height="36" rx="18" fill="#16213C" stroke="#2E3A5C"/>
+    <text x="415" y="331" text-anchor="middle">Internet an/aus</text>
+    <rect x="502" y="308" width="172" height="36" rx="18" fill="#16213C" stroke="#2E3A5C"/>
+    <text x="588" y="331" text-anchor="middle">Internet-Budget</text>
+  </g>
+
+  <!-- Illustration rechts -->
+  <ellipse cx="965" cy="352" rx="175" ry="15" fill="#000000" opacity="0.35"/>
+
+  <!-- Monitor -->
+  <rect x="940" y="290" width="50" height="28" fill="#334155"/>
+  <rect x="902" y="318" width="126" height="12" rx="6" fill="#475569"/>
+  <rect x="800" y="78" width="330" height="214" rx="16" fill="url(#screen)" stroke="#3B4A6B" stroke-width="2"/>
+
+  <!-- Uhr auf dem Bildschirm -->
+  <circle cx="866" cy="156" r="37" fill="#0F172A" stroke="url(#accent)" stroke-width="4"/>
+  <line x1="866" y1="156" x2="866" y2="131" stroke="#E2E8F0" stroke-width="4" stroke-linecap="round"/>
+  <line x1="866" y1="156" x2="884" y2="164" stroke="#E2E8F0" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="866" cy="156" r="4" fill="#38BDF8"/>
+
+  <!-- Restzeit-Balken auf dem Bildschirm -->
+  <text x="918" y="112" font-family="Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" fill="#64748B">Restzeit heute</text>
+  <rect x="918" y="122" width="180" height="14" rx="7" fill="#1E293B"/>
+  <rect x="918" y="122" width="118" height="14" rx="7" fill="url(#budget)"/>
+  <circle cx="918" cy="196" r="16" fill="#1E293B" stroke="#475569" stroke-width="2"/>
+  <path d="M 918 188 a 8 8 0 0 1 8 8 v 4 h -16 v -4 a 8 8 0 0 1 8 -8" fill="none" stroke="#FBBF24" stroke-width="2.5"/>
+  <circle cx="918" cy="203" r="2" fill="#FBBF24"/>
+
+  <!-- Mond (Zeitfenster) -->
+  <circle cx="782" cy="66" r="21" fill="#FBBF24"/>
+  <circle cx="791" cy="60" r="18" fill="url(#bg)"/>
+
+  <!-- Schutzschild mit Haken -->
+  <g transform="translate(1108 62)">
+    <path d="M0,-30 L26,-19 V7 C26,24 13,34 0,41 C-13,34 -26,24 -26,7 V-19 Z" fill="url(#shieldFill)" stroke="#BBF7D0" stroke-width="2"/>
+    <path d="M-11,2 L-3,11 L13,-9" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- WLAN aus -->
+  <g stroke="#F87171" stroke-width="5" fill="none" stroke-linecap="round">
+    <path d="M1104,298 A23,23 0 0 1 1136,298"/>
+    <path d="M1091,286 A37,37 0 0 1 1149,286"/>
+    <path d="M1078,274 A52,52 0 0 1 1162,274"/>
+  </g>
+  <circle cx="1120" cy="311" r="4.5" fill="#F87171"/>
+  <line x1="1082" y1="320" x2="1158" y2="266" stroke="#EF4444" stroke-width="7" stroke-linecap="round"/>
+</svg>
