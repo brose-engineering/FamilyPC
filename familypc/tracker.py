@@ -83,6 +83,8 @@ class SessionTracker:
                 count_inactive=self.cfg.count_inactive_sessions,
             )
         except Exception as exc:
+            # auch bei Fehler Intervall setzen, sonst Warn-Spam im Sekundentakt
+            self._last_query = now
             log.warning("logind-Abfrage fehlgeschlagen, letzter Stand bleibt: %s", exc)
             return self._cached_users
         self._cached_users = users
