@@ -1,0 +1,21 @@
+# FamilyPC-Konfiguration — wird von install.sh nach /etc/familypc/config.yaml installiert.
+#
+# Konvention: Fehlende Felder = Feature deaktiviert, der Daemon startet trotzdem.
+# Ungültige Werte lassen den Daemon mit Exit-Code 2 enden (kein Absturz, kein Restart-Loop).
+
+daemon:
+  log_level: INFO                  # DEBUG | INFO | WARNING | ERROR | CRITICAL
+  heartbeat_interval_seconds: 60   # Heartbeat-Eintrag ins journald
+  state_dir: /var/lib/familypc     # SQLite-DB für Zeitverbrauch (ab FAM-4)
+
+# Pro-Konto-Regeln (ab FAM-4/5/7/8/9). Leer = keine Einschränkungen.
+accounts: {}
+  # kind1:
+  #   daily_budget_minutes: 120            # FAM-7: 0/fehlend = unbegrenzt
+  #   internet_enabled: true               # FAM-5: false = Internet komplett aus
+  #   internet_daily_budget_minutes: 60    # FAM-9: 0/fehlend = unbegrenzt
+  #   windows:                             # FAM-8: erlaubte Zeitfenster je Wochentag (0=Mo ... 6=So)
+  #     0: [{ start: "15:00", end: "19:00" }]
+  #     1: [{ start: "15:00", end: "19:00" }]
+  #     5: [{ start: "09:00", end: "19:00" }]
+  #     6: [{ start: "09:00", end: "19:00" }]

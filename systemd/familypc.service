@@ -1,0 +1,26 @@
+[Unit]
+Description=FamilyPC Daemon (Nutzungszeiten & Internet-Sperre pro Nutzerkonto)
+Documentation=https://brose-eng.atlassian.net (Projekt FAM)
+After=systemd-logind.service network.target
+Wants=systemd-logind.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStartPre=/opt/familypc/venv/bin/python -m familypc --config /etc/familypc/config.yaml --check-config
+ExecStart=/opt/familypc/venv/bin/python -m familypc --config /etc/familypc/config.yaml
+# Exit-Code 2 = Config-Fehler: gilt als sauberes Ende, damit systemd keinen
+# Restart-Loop bei kaputter Config erzeugt.
+SuccessExitStatus=2
+Restart=on-failure
+RestartSec=5s
+# Sicherheitsnetz gegen Restart-Loops (z. B. wiederholte Abstürze):
+StartLimitIntervalSec=120
+StartLimitBurst=5
+# stdout/stderr gehen automatisch ins journald (Heartbeat siehe journalctl -u familypc)
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

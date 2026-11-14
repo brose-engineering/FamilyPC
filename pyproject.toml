@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "familypc"
+version = "0.1.0"
+description = "FamilyPC-Daemon: Nutzungszeiten & Internet-Sperre pro Linux-Nutzerkonto (Linux Mint)"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.5",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "freezegun>=1.4",
+]
+
+[project.scripts]
+familypc = "familypc.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["familypc*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
