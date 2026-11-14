@@ -37,6 +37,10 @@ aus (`https://d.uguu.se/...` bzw. `https://termbin.com/...`). URL ablesen und
 hier im Chat posten — ich hole den Inhalt direkt. Hinweis: 0x0.st und ix.io
 nehmen derzeit keine Uploads mehr an.
 
+**Achtung:** uguu.se löscht Dateien nach **3 Stunden** — Report frisch
+hochladen und die URL sofort posten (ich lese sie direkt aus). Für dauerhafte
+Ablage am Ticket: Variante 1 (`--jira`).
+
 Einzelbefehle gehen auch direkt:
 
 ```bash
