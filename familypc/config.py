@@ -86,7 +86,7 @@ class TrackingConfig(BaseModel):
     reset_hour: int = Field(default=0, ge=0, le=23)  # taeglicher Reset um reset_hour Uhr
     count_remote_sessions: bool = False  # reine SSH-Sessions zaehlen nicht (Default)
     count_inactive_sessions: bool = True  # Fast-User-Switching zaehlt weiter (Default)
-    excluded_users: list[str] = Field(default_factory=lambda: ["root"])  # Admin-/Daemon-Prozesse
+    excluded_users: list[str] = Field(default_factory=lambda: ["root", "lightdm"])  # Admin-/Daemon-/System-User
 
 
 class Config(BaseModel):

@@ -62,6 +62,14 @@ def test_excluded_users_und_closing_state():
     assert logind.trackable_users(excluded_users={"root"}, count_remote=False, count_inactive=True) == set()
 
 
+def test_system_user_uid_unter_1000_zaehlt_nie():
+    # lightdm-Greeter (uid 112) darf nicht auftauchen, auch nicht in excluded_users
+    greeter = graphical("lightdm", sid="1", uid=112)
+    logind = make_logind([greeter, graphical("kind1", sid="2")])
+    users = logind.trackable_users(excluded_users=set(), count_remote=False, count_inactive=True)
+    assert users == {"kind1"}
+
+
 def test_nicht_interaktive_types_zaehlen_nicht():
     s = graphical("kind1")
     s["type"] = "web"

@@ -56,7 +56,8 @@ sudo sqlite3 /var/lib/familypc/usage.db "SELECT user, round(seconds,1) FROM usag
 
 6. **Excluded users**
    ```bash
-   # root-Session (z. B. su -) taucht nicht in der DB auf (excluded_users: ["root"])
+   # System-User (uid < 1000: root, lightdm, ...) und excluded_users tauchen nicht in der DB auf
+   # nach dem Fix: lightdm-Zeile verschwindet nach daemon-restart
    ```
 
 7. **Reset konfigurierbar**

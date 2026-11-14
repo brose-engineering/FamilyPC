@@ -86,9 +86,14 @@ class Logind:
         count_remote: bool,
         count_inactive: bool,
     ) -> set[str]:
-        """Nutzer mit mindestens einer zaehlbaren interaktiven Session."""
+        """Nutzer mit mindestens einer zaehlbaren interaktiven Session.
+
+        System-User (uid < 1000, z. B. lightdm) zaehlen nie, ebenso excluded_users.
+        """
         users: set[str] = set()
         for s in self.list_sessions():
+            if s.uid < 1000:
+                continue  # System-/Daemon-User (root, lightdm, ...)
             if s.user in excluded_users:
                 continue
             if s.type not in INTERACTIVE_TYPES:

@@ -15,7 +15,7 @@ tracking:
   reset_hour: 0                    # taeglicher Reset um 00:00 Uhr (konfigurierbar)
   count_remote_sessions: false     # reine SSH-Sessions zaehlen nicht
   count_inactive_sessions: true    # Fast-User-Switching: weggeswitchte Sessions zaehlen weiter
-  excluded_users: ["root"]         # Admin-/Daemon-Prozesse zaehlen nicht
+  excluded_users: ["root", "lightdm"]  # Admin-/Daemon-/System-User (uid < 1000 zaehlt nie)
 
 # Pro-Konto-Regeln (ab FAM-4/5/7/8/9). Leer = keine Einschränkungen.
 accounts: {}
