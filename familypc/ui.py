@@ -35,8 +35,15 @@ DEFAULT_ADMIN_GROUPS = ["sudo"]
 
 # ---------- Peer-uid aus /proc (Loopback: Client laeuft auf derselben Maschine) ----------
 
-def peer_uid_from_proc(client_port: int, server_port: int, proc_root: str = "/proc") -> int | None:
-    """Ermittelt die uid des Prozesses, der die TCP-Verbindung zu unserem Server-Port haelt."""
+def peer_uid_from_proc(
+    client_port: int,
+    server_port: int,
+    proc_root: str = "/proc",
+    uid_of_pid_fn=None,
+) -> int | None:
+    """Ermittelt die uid des Client-Prozesses ueber dessen socket (client-seitiger Eintrag!)."""
+    if uid_of_pid_fn is None:
+        uid_of_pid_fn = lambda pid: os.stat(Path(proc_root, pid)).st_uid
     inode = None
     for table in ("tcp", "tcp6"):
         try:
@@ -49,7 +56,9 @@ def peer_uid_from_proc(client_port: int, server_port: int, proc_root: str = "/pr
                 continue
             lport = int(parts[1].split(":")[1], 16)
             rport = int(parts[2].split(":")[1], 16)
-            if lport == server_port and rport == client_port:
+            # client-seitiger Socket: local = client_port, remote = server_port
+            # (die server-seitige Zeile wuerde auf den Daemon (root) zeigen)
+            if lport == client_port and rport == server_port:
                 inode = parts[9]
                 break
         if inode is not None:
@@ -65,7 +74,7 @@ def peer_uid_from_proc(client_port: int, server_port: int, proc_root: str = "/pr
             for fd in os.listdir(fd_dir):
                 try:
                     if os.readlink(fd_dir / fd) == target:
-                        return os.stat(Path(proc_root, pid)).st_uid
+                        return uid_of_pid_fn(pid)
                 except OSError:
                     continue
         except OSError:

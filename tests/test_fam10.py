@@ -125,6 +125,27 @@ def test_zugriff_nur_fuer_admin_uid(tmp_path):
     assert client.put("/api/accounts/kind1", json={}).status_code == 403
 
 
+def test_peer_uid_from_proc_client_seitiger_socket(tmp_path):
+    # Regression: server-seitigen Eintrag matchen hiesse uid des Daemons (root) liefern
+    from familypc.ui import peer_uid_from_proc
+
+    client_port, server_port = 45678, 8787
+    hex_cp = f"{client_port:04X}"
+    hex_sp = f"{server_port:04X}"
+    net = tmp_path / "net"
+    net.mkdir(parents=True)
+    (net / "tcp").write_text(
+        "  sl local_address rem_address st tx:rx tr:tm retrnsmt uid timeout inode\n"
+        f"  0: 0100007F:{hex_sp} 0100007F:{hex_cp} 01 00000000:00000000 00:00000000 00000000 0 0 888 0\n"  # server-seitig (root)
+        f"  1: 0100007F:{hex_cp} 0100007F:{hex_sp} 01 00000000:00000000 00:00000000 00000000 1002 0 999 0\n"  # client-seitig (kind1)
+    )
+    pid_dir = tmp_path / "4321" / "fd"
+    pid_dir.mkdir(parents=True)
+    os.symlink("socket:[999]", pid_dir / "3")
+    uid = peer_uid_from_proc(client_port, server_port, proc_root=str(tmp_path), uid_of_pid_fn=lambda pid: 1002 if pid == "4321" else 0)
+    assert uid == 1002  # kind1, nicht root
+
+
 def test_uiserver_start_stop(tmp_path, monkeypatch):
     # Regression: uvicorn.Server hat kein .app — UiServer muss die App selbst halten
     import uvicorn
