@@ -88,12 +88,20 @@ def account_status(
     }
 
 
-def build_status(config: Config, store: UsageStore, tracker, enforcer, now: datetime | None = None) -> dict:
+def build_status(
+    config: Config,
+    store: UsageStore,
+    *,
+    now: datetime | None = None,
+    active_users: set[str] | None = None,
+    internet_blocked_uids: set[int] | None = None,
+) -> dict:
+    """Stateless (FAM-13): Panel-Prozess liest Config/DB/logind selbst und ruft das hier auf."""
     now = now or datetime.now()
     reset_hour = config.tracking.reset_hour if config.tracking else 0
     protected = set(config.enforcement.protected_users) if config.enforcement else {"parent"}
-    active_users = tracker.last_active_users if tracker is not None else set()
-    internet_blocked = enforcer.last_internet_blocked if enforcer is not None else set()
+    active_users = active_users if active_users is not None else set()
+    internet_blocked = internet_blocked_uids if internet_blocked_uids is not None else set()
     users = set(config.accounts) | active_users
     return {
         "now": now.isoformat(timespec="seconds"),

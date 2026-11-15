@@ -18,9 +18,9 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-echo "==> Systempakete (python3-venv, python3-pip, nftables) ..."
+echo "==> Systempakete (python3-venv, python3-pip, nftables, avahi-daemon, openssl) ..."
 apt-get update -qq
-apt-get install -y -qq python3-venv python3-pip nftables
+apt-get install -y -qq python3-venv python3-pip nftables avahi-daemon openssl
 
 echo "==> Projekt nach $PREFIX kopieren ..."
 mkdir -p "$PREFIX"
@@ -72,11 +72,41 @@ fi
 # Hook muss ohne PAM_USER fehlerfrei exit 0 liefern (fail-open), sonst Lockout-Risiko
 "$VENV/bin/familypc-pam-check" </dev/null || true
 
-echo "==> systemd-Unit installieren und Service starten ..."
+echo "==> Admin-Panel (FAM-12/13): TLS-Zertifikat, Avahi (familypc.local), Panel-Unit ..."
+# Selbstsigniertes Zertifikat nur erzeugen, wenn nicht vorhanden (sonst bleiben Browser-Warnungen stabil)
+if [[ ! -f /etc/familypc/panel.crt || ! -f /etc/familypc/panel.key ]]; then
+  openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
+    -keyout /etc/familypc/panel.key -out /etc/familypc/panel.crt \
+    -subj "/CN=familypc.local" -addext "subjectAltName=DNS:familypc.local,DNS:localhost,IP:127.0.0.1" 2>/dev/null
+  chmod 0600 /etc/familypc/panel.key
+  echo "    Selbstsigniertes Zertifikat erzeugt: /etc/familypc/panel.crt (Browser-Warnung beim ersten Aufruf normal)"
+fi
+# Avahi/mDNS: Panel als familypc.local bekannt geben
+mkdir -p /etc/avahi/services
+cat > /etc/avahi/services/familypc.service <<'XML'
+<?xml version="1.0" standalone='no'?>
+<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+<service-group>
+  <name replace-wildcards="yes">FamilyPC Admin-Panel auf %h</name>
+  <service>
+    <type>_https._tcp</type>
+    <port>8787</port>
+  </service>
+</service-group>
+XML
+systemctl enable --now avahi-daemon.service 2>/dev/null || true
+
+PANEL_UNIT_SRC="$SRC_DIR/systemd/familypc-panel.service"
+PANEL_UNIT_DST=/etc/systemd/system/familypc-panel.service
+
+echo "==> systemd-Units installieren und Services starten ..."
 install -m 0644 "$UNIT_SRC" "$UNIT_DST"
+install -m 0644 "$PANEL_UNIT_SRC" "$PANEL_UNIT_DST"
 systemctl daemon-reload
-systemctl enable familypc.service
+systemctl enable familypc.service familypc-panel.service
 systemctl restart familypc.service
+systemctl restart familypc-panel.service
+echo "    Panel: https://familypc.local:8787 (oder https://<IP>:8787) — Initial-Account: sudo familypc-panel-admin --config $CONFIG_FILE add <name>"
 
 echo
 systemctl --no-pager --full status familypc.service || true

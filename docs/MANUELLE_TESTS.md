@@ -66,7 +66,7 @@ Details: `docs/FAM-9_VM_TEST.md`. Verbrauch: Tabelle `internet_usage(day, user, 
 
 ## FAM-10 — Admin-UI
 
-Details: `docs/FAM-10_VM_TEST.md`. UI: `http://127.0.0.1:8787` (nur Admin-Sitzung, sudo-Gruppe).
+Details: `docs/FAM-10_VM_TEST.md`. UI: `https://127.0.0.1:8787` (ab FAM-12: Panel-Login statt sudo-Check, siehe FAM-12/13).
 
 - [ ] UI auf `127.0.0.1` nur aus Admin-Sitzung (sudo-Gruppe) erreichbar (`curl` als kind1 → 403, `ss -tlnp` zeigt nur 127.0.0.1:8787)
 - [ ] Übersicht zeigt Restzeiten (PC + Internet), Fenster- und Internet-Status live (5 s)
@@ -75,3 +75,22 @@ Details: `docs/FAM-10_VM_TEST.md`. UI: `http://127.0.0.1:8787` (nur Admin-Sitzun
 - [ ] ungültige Eingabe (z. B. Fenster 19:00-15:00) → 422, Config-Datei bleibt unverändert
 - [ ] neues Konto per UI anlegen („Konto hinzufügen", z. B. kind2 nach Entfernen) → erscheint in der Liste und ist bearbeitbar
 - [ ] fail-open unverändert (Daemon-Stop → UI weg, PAM fail-open, nft-Tabelle weg)
+
+## FAM-12 — Panel-Login (Eltern-Authentifizierung)
+
+Details: `docs/FAM-12_13_VM_TEST.md`.
+
+- [ ] ohne Login kein API-Zugriff — auch nicht von 127.0.0.1 (`curl -k https://127.0.0.1:8787/api/status` → 401)
+- [ ] Initial-Account per CLI als root: `sudo familypc-panel-admin --config /etc/familypc/config.yaml add parent`
+- [ ] 5 Fehlversuche → 423 Locked + Log-Eintrag (Passwort nie im Log); nach lockout_minutes wieder Login möglich
+- [ ] Session-Cookie HttpOnly/Secure/SameSite=Strict; PUT/DELETE ohne CSRF-Header → 403
+- [ ] Logout → Session ungültig; Passwort-Reset nur als root auf Konsole
+
+## FAM-13 — Panel im Heimnetz (HTTPS)
+
+Details: `docs/FAM-12_13_VM_TEST.md`.
+
+- [ ] `familypc-panel.service` läuft; `ss -tlnp` zeigt 0.0.0.0:8787 (HTTPS) + 0.0.0.0:8786 (Redirect)
+- [ ] `http://<ip>:8786` → 301 auf `https://<ip>:8787`; selbstsigniertes Zertifikat (Browser-Warnung dokumentiert)
+- [ ] `familypc.local` löst via Avahi auf; vom Handy im WLAN voll bedienbar (Login + Regeln + Live-Werte)
+- [ ] reboot-sicher

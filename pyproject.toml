@@ -12,6 +12,7 @@ dependencies = [
     "PyYAML>=6.0",
     "fastapi>=0.110",
     "uvicorn>=0.29",
+    "argon2-cffi>=23.1",
 ]
 
 [project.optional-dependencies]
@@ -24,6 +25,8 @@ dev = [
 [project.scripts]
 familypc = "familypc.__main__:main"
 familypc-pam-check = "familypc.pam_check:main"
+familypc-panel = "familypc.panel:main"
+familypc-panel-admin = "familypc.panel_admin:main"
 
 [tool.setuptools.packages.find]
 include = ["familypc*"]

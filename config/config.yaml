@@ -36,12 +36,20 @@ accounts: {}
   #     5: [{ start: "09:00", end: "19:00" }]
   #     6: [{ start: "09:00", end: "19:00" }]
 
-# Admin-UI (FAM-10). Sektion weglassen = UI deaktiviert.
-# Bindung nur 127.0.0.1 (kein Netzwerkzugriff); Zugriff nur fuer Prozesse von
-# Mitgliedern der admin_groups (Default: sudo) — Admin-UI im Browser des Eltern-Kontos.
-# Aenderungen per UI schreiben diese Datei; der Daemon laedt sie automatisch neu (kein Neustart).
+# Admin-Panel (FAM-10 localhost, FAM-12/13 LAN+HTTPS). Sektion weglassen = Panel deaktiviert.
+# FAM-12: Login mit eigenen Panel-Accounts (Initial-Account als root:
+#   sudo familypc-panel-admin --config /etc/familypc/config.yaml add <name>
+#   ohne Login kein API-Zugriff — auch nicht von localhost).
+# FAM-13: host 0.0.0.0 = Bindung ans LAN, erreichbar via https://familypc.local:8787 (Avahi).
+# Aenderungen per Panel schreiben diese Datei; der Daemon laedt sie automatisch neu (kein Neustart).
 ui:
   enabled: true
-  host: 127.0.0.1
-  port: 8787
-  admin_groups: ["sudo"]
+  host: 0.0.0.0                 # FAM-13: LAN; fuer reines localhost 127.0.0.1 setzen
+  port: 8787                    # HTTPS-Port
+  http_port: 8786               # HTTP-Redirect auf HTTPS (0 = aus)
+  tls_enabled: true             # selbstsigniertes Zertifikat (panel.crt/panel.key)
+  tls_cert: /etc/familypc/panel.crt
+  tls_key: /etc/familypc/panel.key
+  session_hours: 12
+  max_login_fails: 5            # dann temporaere Sperre (lockout_minutes)
+  lockout_minutes: 15

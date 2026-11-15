@@ -95,7 +95,8 @@ def main(argv=None) -> int:
     protected = set(config.enforcement.protected_users) if config.enforcement else {"parent"}
     internet = InternetBlocker(Nftables(), config.accounts, protected)
 
-    # FAM-10: gemeinsamer Runtime-State (Daemon schreibt Config-Reloads rein, UI liest mit)
+    # FAM-10: gemeinsamer Runtime-State (Daemon schreibt Config-Reloads rein)
+    # FAM-13: Das Admin-Panel laeuft als eigener systemd-Service (familypc-panel.service)
     state = RuntimeState(config)
     state.tracker = tracker
     state.enforcer = enforcer
@@ -111,29 +112,7 @@ def main(argv=None) -> int:
     )
     signal.signal(signal.SIGTERM, daemon.request_stop)
     signal.signal(signal.SIGINT, daemon.request_stop)
-
-    # FAM-10: Admin-UI im selben Prozess (uvicorn-Thread), Bind default 127.0.0.1
-    ui_server = None
-    if config.ui is not None and config.ui.enabled:
-        if store is None:
-            store = UsageStore(config.daemon.state_dir / "usage.db")
-            state.tracker = tracker
-        from .ui import UiServer, create_app
-
-        static_candidates = [
-            Path(__file__).resolve().parent / "ui_static",
-            Path("/opt/familypc/ui_static"),
-            Path("/opt/familypc/familypc/ui_static"),
-        ]
-        static_dir = next((p for p in static_candidates if p.is_dir()), None)
-        app = create_app(state, args.config, store, static_dir=static_dir)
-        ui_server = UiServer(app, config.ui.host, config.ui.port)
-        ui_server.start()
-    try:
-        return daemon.run()
-    finally:
-        if ui_server is not None:
-            ui_server.stop()
+    return daemon.run()
 
 
 if __name__ == "__main__":

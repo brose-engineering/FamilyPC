@@ -2,6 +2,17 @@ import React, { useCallback, useEffect, useState } from 'react'
 
 const WOCHENTAGE = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 
+function csrfToken() {
+  const m = document.cookie.match(/(?:^|;\s*)familypc_csrf=([^;]+)/)
+  return m ? decodeURIComponent(m[1]) : ''
+}
+
+async function api(path, opts = {}) {
+  const headers = { ...(opts.headers || {}) }
+  if (opts.method && opts.method !== 'GET') headers['X-CSRF-Token'] = csrfToken()
+  return fetch(path, { ...opts, headers })
+}
+
 function fmtMin(sec) {
   if (sec === null || sec === undefined) return 'unbegrenzt'
   const m = Math.floor(sec / 60)
@@ -10,7 +21,6 @@ function fmtMin(sec) {
 }
 
 function parseWindows(textByDay) {
-  // textByDay: {0: "15:00-19:00, 20:00-21:00", ...} -> {0: [{start,end}], ...}
   const windows = {}
   for (const [day, text] of Object.entries(textByDay)) {
     const entries = (text || '').split(',').map((s) => s.trim()).filter(Boolean)
@@ -47,7 +57,26 @@ function formFromAccount(a) {
   }
 }
 
+function Login({ onLogin, err }) {
+  const [user, setUser] = useState('')
+  const [pw, setPw] = useState('')
+  const [busy, setBusy] = useState(false)
+  return (
+    <div className="wrap login">
+      <h1>FamilyPC Admin</h1>
+      <p className="meta">Anmeldung mit Panel-Account (Eltern)</p>
+      {err && <p className="err">{err}</p>}
+      <label>Benutzer<br /><input value={user} onChange={(e) => setUser(e.target.value)} autoFocus /></label>
+      <label>Passwort<br /><input type="password" value={pw} onChange={(e) => setPw(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && !busy && onLogin(user, pw, setBusy, setPw)} /></label>
+      <button disabled={busy || !user || !pw} onClick={() => onLogin(user, pw, setBusy, setPw)}>Anmelden</button>
+    </div>
+  )
+}
+
 export default function App() {
+  const [auth, setAuth] = useState(undefined) // undefined = pruefen, null = Login noetig
+  const [loginErr, setLoginErr] = useState(null)
   const [status, setStatus] = useState(null)
   const [config, setConfig] = useState(null)
   const [error, setError] = useState(null)
@@ -57,40 +86,49 @@ export default function App() {
   const [newUser, setNewUser] = useState('')
   const [users, setUsers] = useState([])
 
-  useEffect(() => {
-    fetch('/api/users').then((r) => r.json()).then((d) => setUsers(d.users || [])).catch(() => {})
-  }, [])
-
-  async function addUser() {
-    const user = newUser.trim()
-    if (!user) return
-    setMsg(null)
-    const r = await fetch(`/api/accounts/${encodeURIComponent(user)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ daily_budget_minutes: null, internet_enabled: true, internet_daily_budget_minutes: null, windows: {} }),
-    })
-    if (!r.ok) {
-      const d = await r.json().catch(() => ({}))
-      setMsg(`Fehler: ${d.detail ? JSON.stringify(d.detail) : 'HTTP ' + r.status}`)
-      return
+  async function handleLogin(user, pw, setBusy) {
+    setBusy(true)
+    setLoginErr(null)
+    try {
+      const r = await api('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user, password: pw }),
+      })
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}))
+        setLoginErr(d.detail || `HTTP ${r.status}`)
+        return
+      }
+      setAuth(user)
+    } finally {
+      setBusy(false)
     }
-    setConfig(await (await fetch('/api/config')).json())
-    setNewUser('')
-    setMsg(`Konto ${user} angelegt — Regeln jetzt bearbeiten.`)
-    startEdit(user)
-    load()
+  }
+
+  async function handleLogout() {
+    await api('/api/logout', { method: 'POST' })
+    setAuth(null)
+    setStatus(null)
+    setConfig(null)
   }
 
   const load = useCallback(async () => {
     try {
-      const [s, c] = await Promise.all([fetch('/api/status'), fetch('/api/config')])
-      if (s.status === 403 || c.status === 403) {
-        setError('Zugriff nur aus Admin-Sitzung (sudo-Gruppe) moeglich.')
+      const who = await api('/api/whoami')
+      if (who.status === 401) {
+        setAuth(null)
+        return
+      }
+      setAuth((await who.json()).user)
+      const [s, c, u] = await Promise.all([api('/api/status'), api('/api/config'), api('/api/users')])
+      if (s.status === 401) {
+        setAuth(null)
         return
       }
       setStatus(await s.json())
       setConfig(await c.json())
+      setUsers((await u.json()).users || [])
       setError(null)
     } catch (e) {
       setError(String(e))
@@ -109,6 +147,27 @@ export default function App() {
     setMsg(null)
   }
 
+  async function addUser() {
+    const user = newUser
+    if (!user) return
+    setMsg(null)
+    const r = await api(`/api/accounts/${encodeURIComponent(user)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ daily_budget_minutes: null, internet_enabled: true, internet_daily_budget_minutes: null, windows: {} }),
+    })
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}))
+      setMsg(`Fehler: ${d.detail ? JSON.stringify(d.detail) : 'HTTP ' + r.status}`)
+      return
+    }
+    setConfig(await (await api('/api/config')).json())
+    setNewUser('')
+    setMsg(`Konto ${user} angelegt — Regeln jetzt bearbeiten.`)
+    startEdit(user)
+    load()
+  }
+
   async function save(user) {
     setMsg(null)
     try {
@@ -118,7 +177,7 @@ export default function App() {
         internet_daily_budget_minutes: form.internet_daily_budget_minutes === '' ? null : Number(form.internet_daily_budget_minutes),
         windows: parseWindows(form.windowsText),
       }
-      const r = await fetch(`/api/accounts/${encodeURIComponent(user)}`, {
+      const r = await api(`/api/accounts/${encodeURIComponent(user)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -127,7 +186,7 @@ export default function App() {
         const d = await r.json().catch(() => ({}))
         throw new Error(d.detail ? JSON.stringify(d.detail) : `HTTP ${r.status}`)
       }
-      setConfig(await (await fetch('/api/config')).json())
+      setConfig(await (await api('/api/config')).json())
       setMsg(`Regeln fuer ${user} gespeichert — Daemon uebernimmt sie ohne Neustart.`)
       setEditUser(null)
       load()
@@ -139,7 +198,7 @@ export default function App() {
   async function reset(user) {
     if (!confirm(`Regeln fuer ${user} auf Standard zuruecksetzen (unbegrenzt, Internet an, keine Fenster)?`)) return
     setMsg(null)
-    const r = await fetch(`/api/accounts/${encodeURIComponent(user)}`, {
+    const r = await api(`/api/accounts/${encodeURIComponent(user)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ daily_budget_minutes: null, internet_enabled: null, internet_daily_budget_minutes: null, windows: {} }),
@@ -148,7 +207,7 @@ export default function App() {
       setMsg(`Fehler: HTTP ${r.status}`)
       return
     }
-    setConfig(await (await fetch('/api/config')).json())
+    setConfig(await (await api('/api/config')).json())
     setMsg(`Regeln fuer ${user} auf Standard zurueckgesetzt.`)
     if (editUser === user) startEdit(user)
     load()
@@ -156,9 +215,9 @@ export default function App() {
 
   async function remove(user) {
     if (!confirm(`Regeln fuer ${user} wirklich entfernen?`)) return
-    const r = await fetch(`/api/accounts/${encodeURIComponent(user)}`, { method: 'DELETE' })
+    const r = await api(`/api/accounts/${encodeURIComponent(user)}`, { method: 'DELETE' })
     if (r.ok) {
-      setConfig(await (await fetch('/api/config')).json())
+      setConfig(await (await api('/api/config')).json())
       setMsg(`Regeln fuer ${user} entfernt.`)
       if (editUser === user) setEditUser(null)
       load()
@@ -167,12 +226,14 @@ export default function App() {
     }
   }
 
+  if (auth === undefined) return <div className="wrap"><h1>FamilyPC Admin</h1><p>lade ...</p></div>
+  if (auth === null) return <Login onLogin={handleLogin} err={loginErr} />
   if (error) return <div className="wrap"><h1>FamilyPC Admin</h1><p className="err">{error}</p></div>
   if (!status) return <div className="wrap"><h1>FamilyPC Admin</h1><p>lade ...</p></div>
 
   return (
     <div className="wrap">
-      <h1>FamilyPC Admin</h1>
+      <h1>FamilyPC Admin <button className="logout" onClick={handleLogout}>Abmelden ({auth})</button></h1>
       <p className="meta">Stand {status.now} · Nutzungstag {status.day} · aktualisiert alle 5 s</p>
       {msg && <p className="msg">{msg}</p>}
       <div className="add">
@@ -243,7 +304,7 @@ export default function App() {
           ))}
         </tbody>
       </table>
-      <p className="meta">Aenderungen wirken ohne Daemon-Neustart. Nur lokal erreichbar (127.0.0.1).</p>
+      <p className="meta">Aenderungen wirken ohne Daemon-Neustart. Panel-Accounts: <code>sudo familypc-panel-admin --config /etc/familypc/config.yaml list</code></p>
     </div>
   )
 }

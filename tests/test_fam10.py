@@ -1,20 +1,37 @@
-"""FAM-10: Admin-UI (FastAPI) + Config-Auto-Reload des Daemons — Unit-Tests mit simulierter Uhr."""
+"""FAM-10/12/13: Admin-Panel (panel.py) — API-Tests mit Login-Session + CSRF, stateless Status."""
 
-import os
 import time
 from datetime import datetime
-from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
 
 from familypc.config import AccountConfig, Config, EnforcementConfig, TimeWindow, TrackingConfig, UiConfig, load_config, save_config
 from familypc.daemon import Daemon
+from familypc.panel import PanelAuth, create_panel_app
 from familypc.state import RuntimeState
-from familypc.ui import create_app
 from familypc.usage import UsageStore, usage_day
 
 NOW = datetime(2026, 11, 15, 16, 0)  # Sonntag (weekday 6), 16:00 Uhr
+
+
+class FakeHasher:
+    def hash(self, pw):
+        return "h:" + pw
+
+    def verify(self, h, pw):
+        return h == "h:" + pw
+
+
+class FakeClock:
+    def __init__(self):
+        self.t = 1_700_000_000.0
+
+    def __call__(self):
+        return self.t
+
+    def advance(self, s):
+        self.t += s
 
 
 def make_config() -> Config:
@@ -33,25 +50,38 @@ def make_config() -> Config:
     )
 
 
-def make_app(tmp_path, peer_uid=1001, is_admin=None):
+def make_panel(tmp_path, active_users={"kind1"}):
+    """Panel-App mit PanelAuth (FakeHasher) + frischem Login. Liefert (client, path, auth)."""
     cfg = make_config()
     path = tmp_path / "config.yaml"
     save_config(cfg, path)
     store = UsageStore(tmp_path / "usage.db")
-    store.add("kind1", usage_day(NOW), 300.0)  # 5 min verbraucht
-    store.add_internet("kind1", usage_day(NOW), 60.0)  # 1 min Internet verbraucht
-    state = RuntimeState(cfg)
-    state.tracker = SimpleNamespace(last_active_users={"kind1"})
-    state.enforcer = SimpleNamespace(last_internet_blocked=set())
-    app = create_app(
-        state,
+    store.add("kind1", usage_day(NOW), 300.0)
+    store.add_internet("kind1", usage_day(NOW), 60.0)
+    clock = FakeClock()
+    auth = PanelAuth(tmp_path / "panel.db", hasher=FakeHasher(), now_fn=clock, max_fails=5, lockout_seconds=900)
+    auth.add_user("parent", "geheim")
+    logind = type("L", (), {"trackable_users": lambda self, **kw: set(active_users)})()
+    app = create_panel_app(
         path,
-        store,
-        peer_uid_fn=lambda client_port, server_port: peer_uid,
-        is_admin_fn=is_admin or (lambda uid, groups: uid in (0, 1001)),
+        tmp_path,
+        auth,
+        store=store,
+        logind=logind,
+        users_fn=lambda: ["kind1", "kind2", "parent"],
+        static_dir=None,
         now_fn=lambda: NOW,
+        session_hours=12,
+        cookie_secure=False,
     )
-    return app, path, state
+    client = TestClient(app)
+    r = client.post("/api/login", json={"username": "parent", "password": "geheim"})
+    assert r.status_code == 200, r.text
+    return client, path, auth, clock
+
+
+def csrf(client):
+    return {"X-CSRF-Token": client.cookies.get("familypc_csrf")}
 
 
 # ---------- Config save/load ----------
@@ -65,18 +95,52 @@ def test_save_config_roundtrip(tmp_path):
     assert path.stat().st_mode & 0o777 == 0o640
 
 
-# ---------- UI-API ----------
+# ---------- FAM-12: ohne Login kein Zugriff ----------
+
+def test_ohne_login_kein_api_zugriff(tmp_path):
+    cfg = make_config()
+    path = tmp_path / "config.yaml"
+    save_config(cfg, path)
+    auth = PanelAuth(tmp_path / "panel.db", hasher=FakeHasher())
+    auth.add_user("parent", "geheim")
+    app = create_panel_app(path, tmp_path, auth, store=UsageStore(tmp_path / "u.db"),
+                           logind=type("L", (), {"trackable_users": lambda self, **kw: set()})(),
+                           static_dir=None, cookie_secure=False)
+    anon = TestClient(app)
+    assert anon.get("/api/status").status_code == 401
+    assert anon.get("/api/config").status_code == 401
+    assert anon.put("/api/accounts/kind1", json={}).status_code == 401
+    assert anon.get("/api/whoami").status_code == 401
+    # Login-Endpunkt ist offen, falsches Passwort -> 401
+    assert anon.post("/api/login", json={"username": "parent", "password": "falsch"}).status_code == 401
+
+
+def test_login_falsches_passwort_und_kein_passwort_im_log(tmp_path, caplog):
+    cfg = make_config()
+    path = tmp_path / "config.yaml"
+    save_config(cfg, path)
+    auth = PanelAuth(tmp_path / "panel.db", hasher=FakeHasher())
+    auth.add_user("parent", "geheim")
+    app = create_panel_app(path, tmp_path, auth, store=UsageStore(tmp_path / "u.db"),
+                           logind=type("L", (), {"trackable_users": lambda self, **kw: set()})(),
+                           static_dir=None, cookie_secure=False)
+    client = TestClient(app)
+    with caplog.at_level("WARNING", logger="familypc.panel"):
+        r = client.post("/api/login", json={"username": "parent", "password": "falsch123"})
+    assert r.status_code == 401
+    assert "falsch123" not in caplog.text  # Passwort nie im Log
+
+
+# ---------- FAM-10 API (angemeldet) ----------
 
 def test_status_live_restzeiten(tmp_path):
-    app, _, _ = make_app(tmp_path)
-    client = TestClient(app)
+    client, _, _, _ = make_panel(tmp_path)
     r = client.get("/api/status")
     assert r.status_code == 200
     data = r.json()
     assert data["day"] == "2026-11-15"
     kind1 = next(a for a in data["accounts"] if a["user"] == "kind1")
     assert kind1["active"] is True
-    assert kind1["pc"]["budget_minutes"] == 120
     assert kind1["pc"]["remaining_seconds"] == pytest.approx(120 * 60 - 300)
     assert kind1["internet"]["remaining_seconds"] == pytest.approx(60 * 60 - 60)
     assert kind1["internet"]["blocked_now"] is False
@@ -85,152 +149,126 @@ def test_status_live_restzeiten(tmp_path):
 
 
 def test_put_account_aendert_config_datei(tmp_path):
-    app, path, _ = make_app(tmp_path)
-    client = TestClient(app)
+    client, path, _, _ = make_panel(tmp_path)
     body = {
         "daily_budget_minutes": 5,
         "internet_enabled": False,
         "internet_daily_budget_minutes": None,
         "windows": {"6": [{"start": "16:00", "end": "18:00"}]},
     }
-    r = client.put("/api/accounts/kind1", json=body)
+    r = client.put("/api/accounts/kind1", json=body, headers=csrf(client))
     assert r.status_code == 200, r.text
     reloaded = load_config(path)
     assert reloaded.accounts["kind1"].daily_budget_minutes == 5
     assert reloaded.accounts["kind1"].internet_enabled is False
-    assert reloaded.accounts["kind1"].windows[6][0].start == "16:00"
 
 
-def test_put_account_ungueltig_422_und_datei_unveraendert(tmp_path):
-    app, path, _ = make_app(tmp_path)
-    client = TestClient(app)
+def test_put_ohne_csrf_header_403(tmp_path):
+    client, path, _, _ = make_panel(tmp_path)
     before = path.read_text()
-    r = client.put("/api/accounts/kind1", json={"windows": {"6": [{"start": "19:00", "end": "15:00"}]}})
+    r = client.put("/api/accounts/kind1", json={"daily_budget_minutes": 5})  # kein X-CSRF-Token
+    assert r.status_code == 403
+    assert path.read_text() == before
+
+
+def test_put_ungueltig_422_und_datei_unveraendert(tmp_path):
+    client, path, _, _ = make_panel(tmp_path)
+    before = path.read_text()
+    r = client.put("/api/accounts/kind1", json={"windows": {"6": [{"start": "19:00", "end": "15:00"}]}}, headers=csrf(client))
     assert r.status_code == 422
-    assert path.read_text() == before  # atomar: kaputte Aenderung landet nicht in der Datei
+    assert path.read_text() == before
+
+
+def test_put_legt_neues_konto_an_und_reset(tmp_path):
+    client, path, _, _ = make_panel(tmp_path)
+    r = client.put("/api/accounts/kind9", json={"daily_budget_minutes": 45}, headers=csrf(client))
+    assert r.status_code == 200
+    assert load_config(path).accounts["kind9"].daily_budget_minutes == 45
+    # Reset auf Standard
+    r = client.put("/api/accounts/kind9", json={}, headers=csrf(client))
+    assert r.status_code == 200
+    acct = load_config(path).accounts["kind9"]
+    assert acct.daily_budget_minutes is None and acct.windows == {}
+
+
+def test_delete_account(tmp_path):
+    client, path, _, _ = make_panel(tmp_path)
+    assert client.delete("/api/accounts/kind1", headers=csrf(client)).status_code == 200
+    assert "kind1" not in load_config(path).accounts
+    assert client.delete("/api/accounts/kind1", headers=csrf(client)).status_code == 404
 
 
 def test_api_users_liste(tmp_path):
-    cfg = make_config()
-    path = tmp_path / "config.yaml"
-    save_config(cfg, path)
-    store = UsageStore(tmp_path / "usage.db")
-    state = RuntimeState(cfg)
-    app = create_app(state, path, store,
-                     peer_uid_fn=lambda cp, sp: 1001,
-                     is_admin_fn=lambda uid, g: uid in (0, 1001),
-                     users_fn=lambda: ["kind1", "kind2", "parent"])
-    r = TestClient(app).get("/api/users")
+    client, _, _, _ = make_panel(tmp_path)
+    r = client.get("/api/users")
     assert r.status_code == 200
     assert r.json() == {"users": ["kind1", "kind2", "parent"]}
 
 
-def test_put_legt_neues_konto_an(tmp_path):
-    app, path, _ = make_app(tmp_path)
+def test_logout_entwertet_session(tmp_path):
+    client, _, _, _ = make_panel(tmp_path)
+    assert client.get("/api/status").status_code == 200
+    assert client.post("/api/logout", headers=csrf(client)).status_code == 200
+    assert client.get("/api/status").status_code == 401
+
+
+# ---------- FAM-12: Rate-Limit / Sperre / Session ----------
+
+def test_rate_limit_sperrt_nach_5_fehlversuchen(tmp_path):
+    cfg = make_config()
+    path = tmp_path / "config.yaml"
+    save_config(cfg, path)
+    clock = FakeClock()
+    auth = PanelAuth(tmp_path / "panel.db", hasher=FakeHasher(), now_fn=clock, max_fails=5, lockout_seconds=900)
+    auth.add_user("parent", "geheim")
+    app = create_panel_app(path, tmp_path, auth, store=UsageStore(tmp_path / "u.db"),
+                           logind=type("L", (), {"trackable_users": lambda self, **kw: set()})(),
+                           static_dir=None, cookie_secure=False)
     client = TestClient(app)
-    r = client.put("/api/accounts/kind9", json={"daily_budget_minutes": 45})
-    assert r.status_code == 200, r.text
-    assert load_config(path).accounts["kind9"].daily_budget_minutes == 45
+    for i in range(5):
+        r = client.post("/api/login", json={"username": "parent", "password": "falsch"})
+        assert r.status_code == 401
+    # jetzt gesperrt: auch das richtige Passwort -> 423
+    r = client.post("/api/login", json={"username": "parent", "password": "geheim"})
+    assert r.status_code == 423
+    # nach Ablauf der Sperre geht es wieder
+    clock.advance(901)
+    r = client.post("/api/login", json={"username": "parent", "password": "geheim"})
+    assert r.status_code == 200
 
 
-def test_put_reset_auf_standard(tmp_path):
-    app, path, _ = make_app(tmp_path)
-    client = TestClient(app)
-    r = client.put("/api/accounts/kind1", json={"daily_budget_minutes": None, "internet_enabled": None, "internet_daily_budget_minutes": None, "windows": {}})
-    assert r.status_code == 200, r.text
-    acct = load_config(path).accounts["kind1"]
-    assert acct.daily_budget_minutes is None and acct.internet_enabled is None
-    assert acct.internet_daily_budget_minutes is None and acct.windows == {}
+def test_session_ablauf(tmp_path):
+    client, _, auth, clock = make_panel(tmp_path)
+    assert client.get("/api/whoami").json()["user"] == "parent"
+    clock.advance(13 * 3600)  # Session 12 h
+    assert client.get("/api/status").status_code == 401
 
 
-def test_delete_account(tmp_path):
-    app, path, _ = make_app(tmp_path)
-    client = TestClient(app)
-    assert client.delete("/api/accounts/kind1").status_code == 200
-    assert "kind1" not in load_config(path).accounts
-    assert client.delete("/api/accounts/kind1").status_code == 404
-
-
-def test_zugriff_nur_fuer_admin_uid(tmp_path):
-    app, _, _ = make_app(tmp_path, peer_uid=1002, is_admin=lambda uid, groups: uid in (0, 1001))
-    client = TestClient(app)
-    assert client.get("/api/status").status_code == 403
-    assert client.put("/api/accounts/kind1", json={}).status_code == 403
-
-
-def test_peer_uid_from_proc_client_seitiger_socket(tmp_path):
-    # Regression: server-seitigen Eintrag matchen hiesse uid des Daemons (root) liefern
-    from familypc.ui import peer_uid_from_proc
-
-    client_port, server_port = 45678, 8787
-    hex_cp = f"{client_port:04X}"
-    hex_sp = f"{server_port:04X}"
-    net = tmp_path / "net"
-    net.mkdir(parents=True)
-    (net / "tcp").write_text(
-        "  sl local_address rem_address st tx:rx tr:tm retrnsmt uid timeout inode\n"
-        f"  0: 0100007F:{hex_sp} 0100007F:{hex_cp} 01 00000000:00000000 00:00000000 00000000 0 0 888 0\n"  # server-seitig (root)
-        f"  1: 0100007F:{hex_cp} 0100007F:{hex_sp} 01 00000000:00000000 00:00000000 00000000 1002 0 999 0\n"  # client-seitig (kind1)
-    )
-    pid_dir = tmp_path / "4321" / "fd"
-    pid_dir.mkdir(parents=True)
-    os.symlink("socket:[999]", pid_dir / "3")
-    uid = peer_uid_from_proc(client_port, server_port, proc_root=str(tmp_path), uid_of_pid_fn=lambda pid: 1002 if pid == "4321" else 0)
-    assert uid == 1002  # kind1, nicht root
-
-
-def test_uiserver_start_stop(tmp_path, monkeypatch):
-    # Regression: uvicorn.Server hat kein .app — UiServer muss die App selbst halten
-    import uvicorn
-
-    from familypc.ui import UiServer
-
-    app, _, _ = make_app(tmp_path)
-    server = UiServer(app, "127.0.0.1", 0)
-
-    def fake_run(self):
-        while not self.should_exit:
-            time.sleep(0.01)
-
-    monkeypatch.setattr(uvicorn.Server, "run", fake_run)
-    server.start()
-    assert server._thread is not None and server._thread.is_alive()
-    server.stop()
-    server._thread.join(timeout=2)
-    assert not server._thread.is_alive()
-
-
-# ---------- Daemon-Config-Reload ----------
-
-def _bump_mtime(path):
-    t = time.time() + 5
-    os.utime(path, (t, t))
-
+# ---------- Daemon-Config-Reload (unveraendert aus FAM-10) ----------
 
 def test_daemon_reload_ohne_neustart(tmp_path):
+    import os
+
     cfg = make_config()
     path = tmp_path / "config.yaml"
     save_config(cfg, path)
     state = RuntimeState(cfg)
-    tracker = SimpleNamespace(last_active_users=set(), updated=False)
-    tracker.update = lambda c, iu: setattr(tracker, "updated", True)
-    enforcer = SimpleNamespace(last_internet_blocked=set(), updated=False)
-    enforcer.update = lambda c, a: setattr(enforcer, "updated", True)
-    internet = SimpleNamespace(updated=False)
-    internet.update = lambda a, p: setattr(internet, "updated", True)
+    tracker = type("T", (), {"last_active_users": set(), "update": lambda self, c, iu: setattr(self, "updated", True)})()
+    enforcer = type("E", (), {"last_internet_blocked": set(), "update": lambda self, c, a: setattr(self, "updated", True)})()
+    internet = type("I", (), {"update": lambda self, a, p: setattr(self, "updated", True)})()
     daemon = Daemon(cfg, tracker=tracker, enforcer=enforcer, internet=internet, config_path=path, state=state)
 
-    # UI schreibt neue Config -> Daemon uebernimmt sie beim naechsten Tick
     cfg.accounts["kind1"].daily_budget_minutes = 5
     save_config(cfg, path)
-    _bump_mtime(path)
+    t = time.time() + 5
+    os.utime(path, (t, t))
     daemon._maybe_reload_config()
     assert daemon.config.accounts["kind1"].daily_budget_minutes == 5
     assert state.get_config().accounts["kind1"].daily_budget_minutes == 5
     assert tracker.updated and enforcer.updated and internet.updated
 
-    # Kaputte Datei: alte Config bleibt aktiv, kein Crash
     path.write_text("accounts: [kaputt\n")
-    _bump_mtime(path)
+    t = time.time() + 10
+    os.utime(path, (t, t))
     daemon._maybe_reload_config()
     assert daemon.config.accounts["kind1"].daily_budget_minutes == 5

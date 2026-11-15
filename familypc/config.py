@@ -102,18 +102,26 @@ class EnforcementConfig(BaseModel):
 
 
 class UiConfig(BaseModel):
-    """Admin-UI (FAM-10). Sektion fehlt komplett = UI deaktiviert.
+    """Admin-Panel (FAM-10 localhost, FAM-13 LAN/HTTPS). Sektion fehlt = Panel deaktiviert.
 
-    Bindung default auf 127.0.0.1 (kein Netzwerkzugriff); Zugriff nur fuer
-    Prozesse von Mitgliedern der Admin-Gruppen (Default: sudo).
+    FAM-12: Zugriff nur mit Panel-Login (eigene Accounts, siehe panel.py) —
+    'admin_groups' ist deprecated und wird ignoriert.
+    FAM-13: host 0.0.0.0 = LAN, TLS selbstsigniert, http_port leitet auf HTTPS um.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = True
-    host: str = "127.0.0.1"
-    port: int = Field(default=8787, ge=1, le=65535)
-    admin_groups: list[str] = Field(default_factory=lambda: ["sudo"])
+    host: str = "127.0.0.1"  # FAM-13: 0.0.0.0 fuer Heimnetz
+    port: int = Field(default=8787, ge=1, le=65535)  # HTTPS-Port
+    http_port: int = Field(default=8786, ge=0, le=65535)  # 0 = kein HTTP-Redirect
+    tls_enabled: bool = True
+    tls_cert: Path = Path("/etc/familypc/panel.crt")
+    tls_key: Path = Path("/etc/familypc/panel.key")
+    session_hours: int = Field(default=12, ge=1, le=720)
+    max_login_fails: int = Field(default=5, ge=1, le=100)
+    lockout_minutes: int = Field(default=15, ge=1, le=1440)
+    admin_groups: list[str] = Field(default_factory=lambda: ["sudo"])  # deprecated ab FAM-12
 
 
 class Config(BaseModel):

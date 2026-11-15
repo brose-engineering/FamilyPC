@@ -9,9 +9,9 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-echo "==> Service stoppen und deaktivieren ..."
-systemctl disable --now familypc.service 2>/dev/null || true
-systemctl reset-failed familypc.service 2>/dev/null || true
+echo "==> Services stoppen und deaktivieren ..."
+systemctl disable --now familypc.service familypc-panel.service 2>/dev/null || true
+systemctl reset-failed familypc.service familypc-panel.service 2>/dev/null || true
 
 echo "==> PAM-Hook entfernen ..."
 if [[ -f /etc/pam.d/common-auth ]]; then
@@ -22,11 +22,12 @@ echo "==> nftables-Tabelle entfernen (fail-open) ..."
 nft delete table inet familypc 2>/dev/null || true
 
 echo "==> Dateien entfernen ..."
-rm -f /etc/systemd/system/familypc.service
+rm -f /etc/systemd/system/familypc.service /etc/systemd/system/familypc-panel.service
+rm -f /etc/avahi/services/familypc.service
 systemctl daemon-reload
 rm -rf /opt/familypc
-rm -rf /var/lib/familypc   # inkl. SQLite-Nutzungsdaten
-rm -rf /etc/familypc      # inkl. config.yaml
+rm -rf /var/lib/familypc   # inkl. SQLite-Nutzungsdaten + panel.db
+rm -rf /etc/familypc      # inkl. config.yaml, panel.crt/key
 rm -rf /run/familypc      # Control-Socket
 
 echo "FamilyPC wurde vollstaendig entfernt (Unit, /opt/familypc, /var/lib/familypc, /etc/familypc)."

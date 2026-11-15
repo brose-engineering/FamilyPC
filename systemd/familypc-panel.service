@@ -1,0 +1,23 @@
+[Unit]
+Description=FamilyPC Admin-Panel (HTTPS, Heimnetz) - Eltern-Login, Regeln aendern
+Documentation=https://brose-eng.atlassian.net
+After=network-online.target familypc.service avahi-daemon.service
+Wants=network-online.target
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStartPre=/opt/familypc/venv/bin/python -m familypc --config /etc/familypc/config.yaml --check-config
+ExecStart=/opt/familypc/venv/bin/python -m familypc.panel --config /etc/familypc/config.yaml
+# Exit-Code 2 = Config-Fehler: sauberes Ende, kein Restart-Loop
+SuccessExitStatus=2
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
