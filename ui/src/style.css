@@ -20,4 +20,4 @@ button:hover { background: #f0f2f5; }
 .windows label { display: inline-block; margin-right: 12px; }
 .windows input { width: 150px; }
 .add { margin: 10px 0 16px; }
-.add input { padding: 6px 10px; border: 1px solid #ccd0d5; border-radius: 6px; width: 260px; margin-right: 8px; }
+.add select { padding: 6px 10px; border: 1px solid #ccd0d5; border-radius: 6px; min-width: 260px; margin-right: 8px; }

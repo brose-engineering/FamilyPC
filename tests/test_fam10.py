@@ -110,6 +110,21 @@ def test_put_account_ungueltig_422_und_datei_unveraendert(tmp_path):
     assert path.read_text() == before  # atomar: kaputte Aenderung landet nicht in der Datei
 
 
+def test_api_users_liste(tmp_path):
+    cfg = make_config()
+    path = tmp_path / "config.yaml"
+    save_config(cfg, path)
+    store = UsageStore(tmp_path / "usage.db")
+    state = RuntimeState(cfg)
+    app = create_app(state, path, store,
+                     peer_uid_fn=lambda cp, sp: 1001,
+                     is_admin_fn=lambda uid, g: uid in (0, 1001),
+                     users_fn=lambda: ["kind1", "kind2", "parent"])
+    r = TestClient(app).get("/api/users")
+    assert r.status_code == 200
+    assert r.json() == {"users": ["kind1", "kind2", "parent"]}
+
+
 def test_put_legt_neues_konto_an(tmp_path):
     app, path, _ = make_app(tmp_path)
     client = TestClient(app)

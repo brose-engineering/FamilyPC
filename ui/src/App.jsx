@@ -55,6 +55,11 @@ export default function App() {
   const [editUser, setEditUser] = useState(null)
   const [form, setForm] = useState(emptyForm())
   const [newUser, setNewUser] = useState('')
+  const [users, setUsers] = useState([])
+
+  useEffect(() => {
+    fetch('/api/users').then((r) => r.json()).then((d) => setUsers(d.users || [])).catch(() => {})
+  }, [])
 
   async function addUser() {
     const user = newUser.trim()
@@ -153,10 +158,15 @@ export default function App() {
       <p className="meta">Stand {status.now} · Nutzungstag {status.day} · aktualisiert alle 5 s</p>
       {msg && <p className="msg">{msg}</p>}
       <div className="add">
-        <input placeholder="Neues Konto (z. B. kind2)" value={newUser}
-          onChange={(e) => setNewUser(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && addUser()} />
-        <button onClick={addUser}>Konto hinzufuegen</button>
+        <select value={newUser} onChange={(e) => setNewUser(e.target.value)}>
+          <option value="">— Konto waehlen —</option>
+          {users.map((u) => (
+            <option key={u} value={u} disabled={!!config?.accounts?.[u]}>
+              {u}{config?.accounts?.[u] ? ' (bereits konfiguriert)' : ''}
+            </option>
+          ))}
+        </select>
+        <button onClick={addUser} disabled={!newUser}>Konto hinzufuegen</button>
       </div>
       <table>
         <thead>

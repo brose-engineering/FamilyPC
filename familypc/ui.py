@@ -82,6 +82,12 @@ def peer_uid_from_proc(
     return None
 
 
+def local_human_users(min_uid: int = 1000) -> list[str]:
+    """Lokale Benutzerkonten (uid >= 1000, keine System/NIS-Accounts) — fuer das Dropdown im UI."""
+    users = [pw.pw_name for pw in pwd.getpwall() if pw.pw_uid >= min_uid and pw.pw_uid < 65534]
+    return sorted(set(users))
+
+
 def default_is_admin(uid: int, admin_groups: list[str]) -> bool:
     if uid == 0:
         return True
@@ -109,6 +115,7 @@ def create_app(
     *,
     peer_uid_fn=None,
     is_admin_fn=None,
+    users_fn=None,
     static_dir: Path | None = None,
     now_fn=datetime.now,
 ) -> FastAPI:
@@ -140,6 +147,12 @@ def create_app(
     def api_config():
         cfg = state.get_config()
         return {"accounts": {u: a.model_dump(mode="json") for u, a in cfg.accounts.items()}}
+
+    @app.get("/api/users")
+    def api_users():
+        """Lokale Nutzerkonten fuer das Anlegen-Dropdown im UI."""
+        list_users = users_fn or local_human_users
+        return {"users": list_users()}
 
     def _write_accounts(mutator) -> JSONResponse:
         try:
