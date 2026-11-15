@@ -74,6 +74,39 @@ def test_logout_bei_budget_0_und_kein_doppel_logout(tmp_path):
     assert terms == ["kind1"]
 
 
+def test_relogin_nach_budget_erneut_abgemeldet(tmp_path):
+    """FAM-10: Budget per UI erhoeht -> frischer Login (may_login ALLOW) re-armt Logout."""
+    clock = FakeClock(datetime(2026, 11, 16, 15, 0, 0))
+    accounts = {"kind1": acct(daily_budget_minutes=30)}
+    enforcer, store, notes, terms = make_enforcer(tmp_path, clock, accounts, store_seconds={"kind1": 30 * 60})
+    enforcer.tick(active_users={"kind1"})
+    assert terms == ["kind1"]  # erster Logout
+    # Eltern setzen Budget per UI hoch -> Config-Reload -> may_login erlaubt wieder
+    enforcer.accounts["kind1"].daily_budget_minutes = 60
+    ok, _ = enforcer.may_login("kind1", clock.now)
+    assert ok is True  # budget_logout-Alert wurde gecleared
+    store.add("kind1", clock.now.date(), 31 * 60)  # neues Budget ueberschritten
+    enforcer.tick(active_users={"kind1"})
+    assert terms == ["kind1", "kind1"]  # erneut abgemeldet
+
+
+def test_internet_sperre_gilt_auch_bei_aufgebrauchtem_pc_budget(tmp_path):
+    """FAM-9/FAM-10: Internet-Block darf nicht wegen PC-Budget-continue fehlen."""
+    from familypc.enforce import Enforcer as _E
+
+    clock = FakeClock(datetime(2026, 11, 16, 15, 0, 0))
+    cfg = EnforcementConfig()
+    store = UsageStore(tmp_path / "usage.db")
+    day = clock.now.date()
+    store.add("kind1", day, 10 * 60)  # PC-Budget 10 min aufgebraucht
+    store.add_internet("kind1", day, 5 * 60)  # Internet-Budget 5 min aufgebraucht
+    enforcer = _E(cfg, {"kind1": acct(daily_budget_minutes=10, internet_daily_budget_minutes=5)},
+                  store, now_fn=clock, notify_fn=lambda *a: None, terminate_fn=lambda u: None,
+                  uid_fn=lambda u: 1002)
+    enforcer.tick(active_users={"kind1"})
+    assert 1002 in enforcer.last_internet_blocked
+
+
 def test_relogin_nach_budget_verweigert_may_login(tmp_path):
     clock = FakeClock(datetime(2026, 11, 16, 15, 0, 0))
     accounts = {"kind1": acct(daily_budget_minutes=30)}

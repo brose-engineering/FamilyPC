@@ -85,6 +85,10 @@ class Enforcer:
                 return False, "heute kein Nutzungsfenster konfiguriert"
             if not self._inside(windows, t):
                 return False, "ausserhalb des Nutzungsfensters"
+        # Frischer Login re-armt den Logout: sonst wuerde ein heute bereits erfolgter
+        # Logout (z. B. nach Budget-Aenderung per UI) eine neue Session nicht mehr beenden.
+        self.store.clear_alert(user, day, "budget_logout")
+        self.store.clear_alert(user, day, "window_terminated")
         return True, "ok"
 
     # ---------- Täglicher Tick ----------
@@ -97,13 +101,15 @@ class Enforcer:
         for user, acct in self.accounts.items():
             if user in self.cfg.protected_users:
                 continue
-            if not self._tick_budget(user, acct, day):
-                continue  # wurde gerade abgemeldet
-            self._tick_windows(user, acct, now, t, day, active_users)
+            # Internet-Sperre unabhaengig vom PC-Budget pruefen (sonst fehlt sie,
+            # wenn das PC-Budget bereits aufgebraucht ist)
             if self._tick_internet_budget(user, acct, day):
                 uid = self._uid_fn(user)
                 if uid is not None and uid >= 1000:
                     internet_blocked.add(uid)
+            if not self._tick_budget(user, acct, day):
+                continue  # wurde gerade abgemeldet
+            self._tick_windows(user, acct, now, t, day, active_users)
         self.last_internet_blocked = internet_blocked
 
     def _tick_internet_budget(self, user: str, acct: AccountConfig, day) -> bool:

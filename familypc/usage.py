@@ -108,5 +108,13 @@ class UsageStore:
                 (day.isoformat(), user, kind),
             )
 
+    def clear_alert(self, user: str, day: date, kind: str) -> None:
+        """FAM-10: frischer Login (may_login ALLOW) re-armt den Logout fuer diese Session."""
+        with self._lock, self._conn:
+            self._conn.execute(
+                "DELETE FROM alerts WHERE day = ? AND user = ? AND kind = ?",
+                (day.isoformat(), user, kind),
+            )
+
     def close(self) -> None:
         self._conn.close()
