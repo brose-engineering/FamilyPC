@@ -54,6 +54,28 @@ export default function App() {
   const [msg, setMsg] = useState(null)
   const [editUser, setEditUser] = useState(null)
   const [form, setForm] = useState(emptyForm())
+  const [newUser, setNewUser] = useState('')
+
+  async function addUser() {
+    const user = newUser.trim()
+    if (!user) return
+    setMsg(null)
+    const r = await fetch(`/api/accounts/${encodeURIComponent(user)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ daily_budget_minutes: null, internet_enabled: true, internet_daily_budget_minutes: null, windows: {} }),
+    })
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}))
+      setMsg(`Fehler: ${d.detail ? JSON.stringify(d.detail) : 'HTTP ' + r.status}`)
+      return
+    }
+    setConfig(await (await fetch('/api/config')).json())
+    setNewUser('')
+    setMsg(`Konto ${user} angelegt — Regeln jetzt bearbeiten.`)
+    startEdit(user)
+    load()
+  }
 
   const load = useCallback(async () => {
     try {
@@ -130,6 +152,12 @@ export default function App() {
       <h1>FamilyPC Admin</h1>
       <p className="meta">Stand {status.now} · Nutzungstag {status.day} · aktualisiert alle 5 s</p>
       {msg && <p className="msg">{msg}</p>}
+      <div className="add">
+        <input placeholder="Neues Konto (z. B. kind2)" value={newUser}
+          onChange={(e) => setNewUser(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addUser()} />
+        <button onClick={addUser}>Konto hinzufuegen</button>
+      </div>
       <table>
         <thead>
           <tr>

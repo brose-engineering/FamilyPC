@@ -110,6 +110,14 @@ def test_put_account_ungueltig_422_und_datei_unveraendert(tmp_path):
     assert path.read_text() == before  # atomar: kaputte Aenderung landet nicht in der Datei
 
 
+def test_put_legt_neues_konto_an(tmp_path):
+    app, path, _ = make_app(tmp_path)
+    client = TestClient(app)
+    r = client.put("/api/accounts/kind9", json={"daily_budget_minutes": 45})
+    assert r.status_code == 200, r.text
+    assert load_config(path).accounts["kind9"].daily_budget_minutes == 45
+
+
 def test_delete_account(tmp_path):
     app, path, _ = make_app(tmp_path)
     client = TestClient(app)

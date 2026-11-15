@@ -73,4 +73,5 @@ Details: `docs/FAM-10_VM_TEST.md`. UI: `http://127.0.0.1:8787` (nur Admin-Sitzun
 - [ ] Budget im UI auf 5 min setzen → `Config neu geladen` im Journal → kind1 wird nach 5 min abgemeldet (ohne Daemon-Neustart)
 - [ ] Internet an/aus + Internet-Budget + Fenster je Wochentag per UI änderbar → nft/PAM wirken sofort
 - [ ] ungültige Eingabe (z. B. Fenster 19:00-15:00) → 422, Config-Datei bleibt unverändert
+- [ ] neues Konto per UI anlegen („Konto hinzufügen", z. B. kind2 nach Entfernen) → erscheint in der Liste und ist bearbeitbar
 - [ ] fail-open unverändert (Daemon-Stop → UI weg, PAM fail-open, nft-Tabelle weg)
