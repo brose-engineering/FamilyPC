@@ -26,7 +26,11 @@ def test_ruleset_enthaelt_tabelle_chains_und_skuid_regeln():
     assert "chain output { type filter hook output priority 0; policy accept; }" in rs
     assert "chain input" in rs
     assert "flush chain inet familypc output" in rs  # keine Doppel-Regeln
-    assert "add rule inet familypc output meta skuid 1002 drop" in rs
+    # Loopback muss VOR dem Drop erlaubt sein (sonst schwarzer Screen beim Login)
+    out_rules = [l for l in rs.splitlines() if "output" in l and "skuid 1002" in l]
+    assert out_rules[0].endswith("ip daddr 127.0.0.0/8 accept")
+    assert out_rules[1].endswith("drop")
+    assert "add rule inet familypc input  meta skuid 1002 ip saddr 127.0.0.0/8 accept" in rs
     assert "add rule inet familypc input  meta skuid 1002 drop" in rs
     assert "meta skuid 1003" in rs
 

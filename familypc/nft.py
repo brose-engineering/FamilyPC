@@ -36,6 +36,9 @@ def build_ruleset(blocked_uids: set[int]) -> str:
         f"flush chain {FAMILY} {TABLE} input",
     ]
     for uid in sorted(blocked_uids):
+        # Loopback explizit erlauben (sonst haengt z. B. Cinnamon beim Session-Start)
+        lines.append(f"add rule {FAMILY} {TABLE} output meta skuid {uid} ip daddr 127.0.0.0/8 accept")
+        lines.append(f"add rule {FAMILY} {TABLE} input  meta skuid {uid} ip saddr 127.0.0.0/8 accept")
         lines.append(f"add rule {FAMILY} {TABLE} output meta skuid {uid} drop")
         lines.append(f"add rule {FAMILY} {TABLE} input  meta skuid {uid} drop")
     return "\n".join(lines) + "\n"
