@@ -125,6 +125,27 @@ def test_zugriff_nur_fuer_admin_uid(tmp_path):
     assert client.put("/api/accounts/kind1", json={}).status_code == 403
 
 
+def test_uiserver_start_stop(tmp_path, monkeypatch):
+    # Regression: uvicorn.Server hat kein .app — UiServer muss die App selbst halten
+    import uvicorn
+
+    from familypc.ui import UiServer
+
+    app, _, _ = make_app(tmp_path)
+    server = UiServer(app, "127.0.0.1", 0)
+
+    def fake_run(self):
+        while not self.should_exit:
+            time.sleep(0.01)
+
+    monkeypatch.setattr(uvicorn.Server, "run", fake_run)
+    server.start()
+    assert server._thread is not None and server._thread.is_alive()
+    server.stop()
+    server._thread.join(timeout=2)
+    assert not server._thread.is_alive()
+
+
 # ---------- Daemon-Config-Reload ----------
 
 def _bump_mtime(path):

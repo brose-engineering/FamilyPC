@@ -184,14 +184,16 @@ class UiServer:
     def __init__(self, app: FastAPI, host: str, port: int) -> None:
         import uvicorn
 
+        self._app = app
         self._config = uvicorn.Config(app, host=host, port=port, log_level="warning", access_log=False)
         self._server = uvicorn.Server(self._config)
         self._thread: threading.Thread | None = None
         self.port = port
 
     def start(self) -> None:
-        if hasattr(self._server.app, "state") and hasattr(self._server.app.state, "set_server_port"):
-            self._server.app.state.set_server_port(self.port)
+        set_server_port = getattr(self._app.state, "set_server_port", None)
+        if set_server_port is not None:
+            set_server_port(self.port)
         self._thread = threading.Thread(target=self._server.run, name="familypc-ui", daemon=True)
         self._thread.start()
         log.info("Admin-UI aktiv: http://%s:%s", self._config.host, self.port)
