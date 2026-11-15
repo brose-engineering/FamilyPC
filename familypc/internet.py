@@ -47,9 +47,9 @@ class InternetBlocker:
                 blocked.add(uid)
         return blocked
 
-    def sync(self) -> None:
-        """Aktuellen Soll-Zustand in nftables uebertragen (nur bei Aenderung)."""
-        desired = self.desired_blocked_uids()
+    def sync(self, extra_blocked: set[int] | None = None) -> None:
+        """Soll-Zustand = Config-Sperren (internet_enabled:false) + extra (FAM-9 Budget aufgebraucht)."""
+        desired = self.desired_blocked_uids() | (extra_blocked or set())
         if desired == self._applied:
             return
         self.nft.apply(desired)

@@ -70,7 +70,8 @@ class Daemon:
                     if self.enforcer is not None:
                         self.enforcer.tick(active_users=self.tracker.last_active_users)
                 if self.internet is not None:
-                    self.internet.sync()
+                    extra = self.enforcer.last_internet_blocked if self.enforcer is not None else set()
+                    self.internet.sync(extra_blocked=extra)
                 # In kleinen Schritten warten, damit Stopps sofort reagieren.
                 self._wait(timeout=min(1.0, max(0.0, next_heartbeat - self._clock())))
         finally:

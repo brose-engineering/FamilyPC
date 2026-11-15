@@ -24,11 +24,14 @@ class SessionTracker:
         store: UsageStore,
         logind: Logind,
         now_fn=datetime.now,
+        internet_users: set[str] | None = None,
     ) -> None:
         self.cfg = config
         self.store = store
         self.logind = logind
         self._now = now_fn
+        # FAM-9: Internet-Verbrauch nur fuer diese Konten mitzaehlen (nur bei aktiver Session)
+        self._internet_users = internet_users or set()
         self._last_tick: datetime | None = None
         self._active_users: set[str] = set()
         self._last_query: datetime | None = None
@@ -63,12 +66,17 @@ class SessionTracker:
             if day_now == day_last:
                 for user in charge:
                     self.store.add(user, day_now, elapsed)
+                    if user in self._internet_users:
+                        self.store.add_internet(user, day_now, elapsed)
             else:
                 # Intervall ueber die Reset-Grenze splitten
                 boundary = datetime.combine(day_now, time.min) + timedelta(hours=self.cfg.reset_hour)
                 for user in charge:
                     self.store.add(user, day_last, (boundary - self._last_tick).total_seconds())
                     self.store.add(user, day_now, (now - boundary).total_seconds())
+                    if user in self._internet_users:
+                        self.store.add_internet(user, day_last, (boundary - self._last_tick).total_seconds())
+                        self.store.add_internet(user, day_now, (now - boundary).total_seconds())
             if charge:
                 log.debug("tick %s: +%.0fs fuer %s", now.isoformat(), elapsed, sorted(charge))
         self._active_users = current

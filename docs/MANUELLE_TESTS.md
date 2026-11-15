@@ -56,9 +56,13 @@ Details: `docs/FAM-7_FAM-8_VM_TEST.md` (Config-Beispiel, PAM-Checks im Journal).
 
 ## FAM-9 — Internet-Tagesbudget pro Konto
 
-- [ ] kind1 mit `internet_daily_budget_minutes: 10` → nach 10 min aktiver Session kein HTTP/DNS mehr
-- [ ] PC bleibt weiter nutzbar (Session läuft), andere Konten unberührt
+Details: `docs/FAM-9_VM_TEST.md`. Verbrauch: Tabelle `internet_usage(day, user, seconds)`.
+
+- [ ] kind1 mit `internet_daily_budget_minutes: 2` → nach 2 min aktiver Session kein HTTP/DNS mehr (`nft list table` zeigt skuid drop), Notification „Internet-Zeit aufgebraucht"
+- [ ] Verbrauch nur bei aktiver Session (internet_usage steigt nur dann)
+- [ ] PC bleibt nutzbar (Session läuft weiter), andere Konten unberührt
 - [ ] Reset um Mitternacht; `internet_enabled: false` hat Vorrang vor dem Budget
+- [ ] fail-open wie FAM-5 (stop -> Tabelle weg)
 
 ## FAM-10 — Admin-UI
 

@@ -12,6 +12,7 @@ import logging
 from datetime import datetime
 
 from .config import AccountConfig, EnforcementConfig
+from .internet import uid_of
 from .notify import send_notification, terminate_user
 from .usage import UsageStore, usage_day
 
@@ -38,6 +39,7 @@ class Enforcer:
         reset_hour: int = 0,
         notify_fn=None,
         terminate_fn=None,
+        uid_fn=uid_of,
     ) -> None:
         self.cfg = cfg
         self.accounts = accounts
@@ -46,6 +48,8 @@ class Enforcer:
         self._reset_hour = reset_hour
         self._notify = notify_fn or (lambda user, s, b: send_notification(user, s, b))
         self._terminate = terminate_fn or terminate_user
+        self._uid_fn = uid_fn
+        self.last_internet_blocked: set[int] = set()  # FAM-9: uids mit aufgebrauchtem Internet-Budget
 
     # ---------- Fenster-Logik ----------
 
@@ -84,12 +88,36 @@ class Enforcer:
         now = now or self._now()
         day = usage_day(now, self._reset_hour)
         t = now.hour * 60 + now.minute
+        internet_blocked: set[int] = set()
         for user, acct in self.accounts.items():
             if user in self.cfg.protected_users:
                 continue
             if not self._tick_budget(user, acct, day):
                 continue  # wurde gerade abgemeldet
             self._tick_windows(user, acct, now, t, day, active_users)
+            if self._tick_internet_budget(user, acct, day):
+                uid = self._uid_fn(user)
+                if uid is not None and uid >= 1000:
+                    internet_blocked.add(uid)
+        self.last_internet_blocked = internet_blocked
+
+    def _tick_internet_budget(self, user: str, acct: AccountConfig, day) -> bool:
+        """FAM-9: True = Internet-Budget aufgebraucht -> Konto sperren."""
+        budget = acct.internet_daily_budget_minutes
+        if not budget:
+            return False
+        used = self.store.get_internet(user, day)
+        if used < budget * 60:
+            return False
+        if not self.store.has_alert(user, day, "internet_exhausted"):
+            self._notify(
+                user,
+                "FamilyPC: Internet-Zeit aufgebraucht",
+                f"Das Internet-Tagesbudget von {budget} Minuten ist aufgebraucht — der Internetzugang wird gesperrt. Der PC bleibt nutzbar.",
+            )
+            self.store.add_alert(user, day, "internet_exhausted")
+            log.info("Internet-Budget %s aufgebraucht (%.0fs/%smin)", user, used, budget)
+        return True
 
     def _tick_budget(self, user: str, acct: AccountConfig, day) -> bool:
         """True = Session darf weiterlaufen."""

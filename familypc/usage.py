@@ -23,6 +23,12 @@ CREATE TABLE IF NOT EXISTS alerts (
     kind TEXT NOT NULL,
     PRIMARY KEY (day, user, kind)
 );
+CREATE TABLE IF NOT EXISTS internet_usage (
+    day     TEXT NOT NULL,
+    user    TEXT NOT NULL,
+    seconds REAL NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, user)
+);
 """
 
 
@@ -68,6 +74,24 @@ class UsageStore:
                 "SELECT user, seconds FROM usage WHERE day = ?", (day.isoformat(),)
             ).fetchall()
         return {user: float(seconds) for user, seconds in rows}
+
+    def add_internet(self, user: str, day: date, seconds: float) -> None:
+        if seconds <= 0:
+            return
+        with self._lock, self._conn:
+            self._conn.execute(
+                "INSERT INTO internet_usage(day, user, seconds) VALUES (?, ?, ?) "
+                "ON CONFLICT(day, user) DO UPDATE SET seconds = seconds + excluded.seconds",
+                (day.isoformat(), user, seconds),
+            )
+
+    def get_internet(self, user: str, day: date) -> float:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT seconds FROM internet_usage WHERE day = ? AND user = ?",
+                (day.isoformat(), user),
+            ).fetchone()
+        return float(row[0]) if row else 0.0
 
     def has_alert(self, user: str, day: date, kind: str) -> bool:
         with self._lock:

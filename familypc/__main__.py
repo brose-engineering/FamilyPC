@@ -71,7 +71,11 @@ def main(argv=None) -> int:
     tracker = None
     if config.tracking is not None and config.tracking.enabled:
         store = UsageStore(config.daemon.state_dir / "usage.db")
-        tracker = SessionTracker(config.tracking, store, Logind())
+        # FAM-9: Internet-Verbrauch nur fuer Konten mit Internet-Budget mitzaehlen
+        internet_users = {
+            u for u, a in config.accounts.items() if a.internet_daily_budget_minutes
+        }
+        tracker = SessionTracker(config.tracking, store, Logind(), internet_users=internet_users)
 
     enforcer = None
     control = None
