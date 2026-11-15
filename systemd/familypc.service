@@ -14,6 +14,8 @@ User=root
 Group=root
 ExecStartPre=/opt/familypc/venv/bin/python -m familypc --config /etc/familypc/config.yaml --check-config
 ExecStart=/opt/familypc/venv/bin/python -m familypc --config /etc/familypc/config.yaml
+# Fail-open: beim Stop die nftables-Tabelle entfernen (kein Lockout-Risiko)
+ExecStopPost=-/usr/sbin/nft delete table inet familypc
 # Exit-Code 2 = Config-Fehler: gilt als sauberes Ende, damit systemd keinen
 # Restart-Loop bei kaputter Config erzeugt.
 SuccessExitStatus=2

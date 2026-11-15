@@ -18,6 +18,9 @@ if [[ -f /etc/pam.d/common-auth ]]; then
   sed -i '/familypc-pam-check/d' /etc/pam.d/common-auth
 fi
 
+echo "==> nftables-Tabelle entfernen (fail-open) ..."
+nft delete table inet familypc 2>/dev/null || true
+
 echo "==> Dateien entfernen ..."
 rm -f /etc/systemd/system/familypc.service
 systemctl daemon-reload

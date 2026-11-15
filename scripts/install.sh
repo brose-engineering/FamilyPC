@@ -18,9 +18,9 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-echo "==> Systempakete (python3-venv, python3-pip) ..."
+echo "==> Systempakete (python3-venv, python3-pip, nftables) ..."
 apt-get update -qq
-apt-get install -y -qq python3-venv python3-pip
+apt-get install -y -qq python3-venv python3-pip nftables
 
 echo "==> Projekt nach $PREFIX kopieren ..."
 mkdir -p "$PREFIX"

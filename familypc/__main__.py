@@ -16,6 +16,8 @@ from .config import DEFAULT_CONFIG_PATH, ConfigError, load_config
 from .control import ControlServer
 from .daemon import Daemon
 from .enforce import Enforcer
+from .internet import InternetBlocker
+from .nft import Nftables
 from .sessions import Logind
 from .tracker import SessionTracker
 from .usage import UsageStore
@@ -85,7 +87,10 @@ def main(argv=None) -> int:
         )
         control = ControlServer(enforcer)
 
-    daemon = Daemon(config, tracker=tracker, enforcer=enforcer, control=control)
+    protected = set(config.enforcement.protected_users) if config.enforcement else {"parent"}
+    internet = InternetBlocker(Nftables(), config.accounts, protected)
+
+    daemon = Daemon(config, tracker=tracker, enforcer=enforcer, control=control, internet=internet)
     signal.signal(signal.SIGTERM, daemon.request_stop)
     signal.signal(signal.SIGINT, daemon.request_stop)
     return daemon.run()

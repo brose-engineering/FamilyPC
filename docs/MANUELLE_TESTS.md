@@ -32,11 +32,14 @@ Details: `docs/FAM-4_VM_TEST.md`. Query: `sudo sqlite3 /var/lib/familypc/usage.d
 
 ## FAM-5 — Internet-Sperre pro Konto (nftables)
 
-- [ ] kind1 mit `internet_enabled: false` → `curl https://example.com` schlägt fehl, DNS schlägt fehl
-- [ ] `parent` und `kind2` surfen normal (Admin-Konto unberührt)
-- [ ] Reboot → Sperre wieder aktiv, keine Doppel-Regeln (`nft list table familypc`)
-- [ ] `systemctl stop familypc` → Sperre weg (fail-open, kein Lockout)
+Details: `docs/FAM-5_VM_TEST.md`. Tabelle: `nft list table inet familypc`.
+
+- [ ] kind1 mit `internet_enabled: false` → `curl https://example.com` + DNS schlagen fehl
+- [ ] `parent` und `kind2` surfen normal (Admin/protected unberührt, root nie blockiert)
+- [ ] Restart mehrfach → keine Doppel-Regeln; Reboot → Regeln idempotent wieder da
+- [ ] `systemctl stop familypc` → Tabelle weg (fail-open, ExecStopPost + Daemon-Clear)
 - [ ] Koexistenz mit ufw geprüft
+- [ ] `internet_enabled: true` → Sperre aufgehoben
 
 ## FAM-7 + FAM-8 — Tagesbudget & Nutzungsfenster
 

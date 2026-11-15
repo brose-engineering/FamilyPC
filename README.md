@@ -72,6 +72,8 @@ python3 -m venv .venv
 │   ├── notify.py              # Desktop-Notification via D-Bus + loginctl terminate-user
 │   ├── control.py             # Unix-Socket für PAM-Hook (Login-Verweigerung)
 │   ├── pam_check.py           # pam_exec-Skript (fail-open bei Daemon-Ausfall)
+│   ├── nft.py                 # nftables-Tabelle familypc (FAM-5)
+│   ├── internet.py            # Internet an/aus pro Konto -> skuid-Regeln (FAM-5)
 │   └── __main__.py            # CLI-Einstieg (python -m familypc)
 ├── config/config.yaml         # Beispiel-Config
 ├── systemd/familypc.service   # systemd-Unit (root)

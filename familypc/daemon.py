@@ -28,6 +28,7 @@ class Daemon:
         tracker=None,
         enforcer=None,
         control=None,
+        internet=None,
     ) -> None:
         self.config = config
         self._clock = clock
@@ -36,6 +37,7 @@ class Daemon:
         self.tracker = tracker
         self.enforcer = enforcer
         self.control = control
+        self.internet = internet
 
     def request_stop(self, signum=None, _frame=None) -> None:
         """Signal-Handler: Daemon fährt kontrolliert herunter."""
@@ -67,11 +69,15 @@ class Daemon:
                     self.tracker.tick()
                     if self.enforcer is not None:
                         self.enforcer.tick(active_users=self.tracker.last_active_users)
+                if self.internet is not None:
+                    self.internet.sync()
                 # In kleinen Schritten warten, damit Stopps sofort reagieren.
                 self._wait(timeout=min(1.0, max(0.0, next_heartbeat - self._clock())))
         finally:
             if self.control is not None:
                 self.control.stop()
+            if self.internet is not None:
+                self.internet.clear()  # fail-open: Sperren weg beim Stop
 
         log.info("Daemon gestoppt (Uptime %.0f s)", self._clock() - started)
         return 0
