@@ -55,3 +55,15 @@ curl -sk -o /dev/null -w 'familypc.local: %{http_code}\n' https://familypc.local
 ## Deinstallation
 
 `sudo scripts/uninstall.sh` entfernt u. a. beide Units, das Avahi-Servicefile, Zertifikate, panel.db.
+
+## Automatisiert
+
+```bash
+sudo PANEL_PW=<panel-passwort> scripts/vm_test_fam12_13.sh --jira FAM-12
+# oder lokal: sudo scripts/vm_test_fam12_13.sh   (Report unter /tmp/familypc-fam12-13-*.txt)
+```
+
+Das Script macht `reset-failed` + Restart, testet 401 ohne Login, 5x Fehlversuch -> 423,
+Sperre (lockout kurz auf 1 min), Login -> Session -> CSRF 403/200, Logout -> 401,
+HTTP->HTTPS-Redirect, `familypc.local` und listet die Panel-Accounts. Achtung: es setzt
+`lockout_minutes` temporaer auf 1 und stellt die Config danach wieder her.
