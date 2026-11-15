@@ -6,8 +6,9 @@
 #   sudo scripts/vm_test_fam12_13.sh --jira FAM-12   # Report als Anhang an Jira-Ticket
 #
 # Panel-Passwort: PANEL_PW in Umgebung oder interaktiv abfragen.
-# Achtung: fuer den Sperre-Test setzt das Script lockout_minutes kurzzeitig auf 1,
-#         startet das Panel neu und stellt die Config danach wieder her.
+# Achtung: das Script setzt lockout_minutes VOR dem Test auf 1 min (Config-Backup,
+#          wird am Ende wiederhergestellt) und setzt fail_count/locked_until in panel.db
+#          zurueck, damit der Test von sauberem Zustand startet.
 set -uo pipefail
 
 OUT="/tmp/familypc-fam12-13-$(date +%Y%m%d-%H%M%S).txt"
@@ -29,19 +30,41 @@ if [[ -z "$PANEL_PW" ]]; then
   echo
 fi
 
+restore_config() {
+  if [[ -f "$CONFIG.famtest.bak" ]]; then
+    cp "$CONFIG.famtest.bak" "$CONFIG" && rm -f "$CONFIG.famtest.bak"
+    sudo systemctl restart familypc-panel 2>/dev/null || true
+    sleep 2
+    echo "Config wiederhergestellt."
+  fi
+}
+trap restore_config EXIT
+
 {
   echo "===== FamilyPC FAM-12/13 VM-Test $(date -Is) ====="
   echo
-  echo "--- reset-failed + Restart beider Services ---"
-  sudo systemctl reset-failed familypc familypc-panel 2>&1 || true
-  sudo systemctl restart familypc familypc-panel 2>&1 || true
+  echo "--- reset: Services neu starten, Login-Sperre zuruecksetzen, lockout=1min patchen ---"
+  sudo systemctl reset-failed familypc familypc-panel avahi-daemon 2>&1 || true
+  sudo sqlite3 /var/lib/familypc/panel.db "UPDATE panel_users SET fail_count=0, locked_until=0;" 2>/dev/null \
+    || echo "(sqlite3-Reset uebersprungen — sqlite3 fehlt?)"
+  cp "$CONFIG" "$CONFIG.famtest.bak"
+  sudo /opt/familypc/venv/bin/python - "$CONFIG" <<'PY' || echo "PATCH FEHLGESCHLAGEN"
+import sys
+from familypc.config import load_config, save_config
+p = sys.argv[1]
+cfg = load_config(p)
+if cfg.ui is None:
+    raise SystemExit("keine ui-Sektion in Config")
+cfg.ui.lockout_minutes = 1
+save_config(cfg, p)
+PY
+  sudo systemctl restart familypc familypc-panel avahi-daemon 2>&1 || true
   sleep 2
-  sudo systemctl restart avahi-daemon 2>&1 || true
   sudo systemctl status familypc --no-pager | head -4
   sudo systemctl status familypc-panel --no-pager | head -4
   echo
-  echo "--- journal familypc-panel (letzte 8) ---"
-  sudo journalctl -u familypc-panel -n 8 --no-pager 2>&1 || true
+  echo "--- journal familypc-panel (letzte 6) ---"
+  sudo journalctl -u familypc-panel -n 6 --no-pager 2>&1 || true
   echo
   echo "--- ss: Ports 8787/8786 ---"
   sudo ss -tlnp | grep -E '8787|8786' || echo "(nichts)"
@@ -65,31 +88,13 @@ fi
     echo "OK: Passwort nicht im Log."
   fi
   echo
-  echo "--- Sperre-Test: lockout kurzzeitig auf 1 min (Config wird danach wiederhergestellt) ---"
-  cp "$CONFIG" "$CONFIG.famtest.bak"
-  # robust via Config-API (alte Configs ohne lockout_minutes-Zeile: sed wuerde nicht greifen)
-  sudo /opt/familypc/venv/bin/python - "$CONFIG" <<'PY' || echo "PATCH FEHLGESCHLAGEN"
-import sys
-from familypc.config import load_config, save_config
-p = sys.argv[1]
-cfg = load_config(p)
-if cfg.ui is None:
-    raise SystemExit("keine ui-Sektion in Config")
-cfg.ui.lockout_minutes = 1
-save_config(cfg, p)
-PY
-  sudo systemctl restart familypc-panel 2>&1 || true
-  sleep 2
+  echo "--- Sperre abwarten (lockout=1min) -> korrekter Login ---"
   echo "warte 65 s ..."
   sleep 65
   code=$(curl -sk -c "$CJ" -o /dev/null -w '%{http_code}' -X POST "$BASE/api/login" -H 'Content-Type: application/json' -d "{\"username\":\"parent\",\"password\":\"$PANEL_PW\"}")
   echo "Login nach Sperre: $code (erwartet 200)"
-  cp "$CONFIG.famtest.bak" "$CONFIG" && sudo rm -f "$CONFIG.famtest.bak"
-  sudo systemctl restart familypc-panel 2>&1 || true
-  sleep 2
-  echo "Config wiederhergestellt."
   echo
-  echo "--- Cookies nach Login ---"
+  echo "--- Cookies nach Login (HttpOnly/Secure bei Session-Cookie) ---"
   grep familypc "$CJ" || true
   echo
   echo "--- mit Session ---"
@@ -109,10 +114,12 @@ PY
   curl -sk -b "$CJ" -X POST "$BASE/api/logout" -o /dev/null -w 'logout: %{http_code}\n'
   curl -sk -b "$CJ" -o /dev/null -w 'GET /api/status nach Logout: %{http_code} (erwartet 401)\n' "$BASE/api/status"
   echo
-  echo "--- FAM-13: HTTP->HTTPS Redirect + Avahi ---"
+  echo "--- FAM-13: HTTP->HTTPS Redirect + Avahi + mDNS ---"
   curl -s -o /dev/null -w 'http://127.0.0.1:8786/ -> %{http_code} Location=%{redirect_url}\n' http://127.0.0.1:8786/
   sudo systemctl status avahi-daemon --no-pager | head -4 || true
-  avahi-resolve -n familypc.local 2>/dev/null || getent hosts familypc.local || echo "familypc.local loest nicht auf (libnss-mdns installiert?)"
+  grep '^hosts' /etc/nsswitch.conf || true
+  dpkg -l libnss-mdns 2>/dev/null | tail -1 || echo "libnss-mdns NICHT installiert — bitte install.sh ausfuehren!"
+  avahi-resolve -n familypc.local 2>/dev/null || getent hosts familypc.local || echo "familypc.local loest nicht auf"
   curl -sk -o /dev/null -w 'https://familypc.local:8787/api/status: %{http_code} (erwartet 401 = erreichbar)\n' https://familypc.local:8787/api/status
   echo
   echo "--- Zertifikat ---"
