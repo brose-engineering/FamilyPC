@@ -15,7 +15,9 @@ pro Request gelesen; Config-Aenderungen uebernimmt der Daemon per mtime-Reload.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import logging
+import math
 import secrets
 import sqlite3
 import threading
@@ -24,7 +26,7 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
@@ -211,6 +213,7 @@ def create_panel_app(
     now_fn=datetime.now,
     session_hours: int = 12,
     cookie_secure: bool = True,
+    terminate_fn=None,
 ) -> FastAPI:
     """Panel-App mit FAM-12-Auth. Ohne gueltige Session kein API-Zugriff (401)."""
     from .ui import local_human_users  # FAM-10 Dropdown
@@ -223,6 +226,11 @@ def create_panel_app(
     app.state.now_fn = now_fn
     app.state.session_hours = session_hours
     app.state.cookie_secure = cookie_secure
+    if terminate_fn is None:
+        from .notify import terminate_user
+
+        terminate_fn = terminate_user
+    app.state.terminate_fn = terminate_fn
 
     def _load_cfg() -> Config:
         return load_config(app.state.config_path)
@@ -323,6 +331,82 @@ def create_panel_app(
     def api_users():
         list_users = users_fn or local_human_users
         return {"users": list_users()}
+
+    @app.get("/api/events")
+    async def api_events(request: Request):
+        """FAM-14: Live-Restzeiten per Server-Sent-Events (ohne Reload)."""
+
+        async def gen():
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    cfg = _load_cfg()
+                    now = app.state.now_fn()
+                    payload = build_status(
+                        cfg,
+                        app.state.store,
+                        now=now,
+                        active_users=_active_users(cfg),
+                        internet_blocked_uids=_internet_blocked(cfg, app.state.store, now),
+                    )
+                    import json as _json
+
+                    yield f"data: {_json.dumps(payload)}\n\n"
+                except Exception as exc:
+                    log.warning("SSE-Status fehlgeschlagen: %s", exc)
+                await asyncio.sleep(3)
+
+        return StreamingResponse(gen(), media_type="text/event-stream")
+
+    # ---------- FAM-14: Quick-Actions ----------
+
+    @app.post("/api/accounts/{user}/extend")
+    def api_extend(user: str, body: dict):
+        """+X Minuten Tagesbudget (ab jetzt, wenn bisher unbegrenzt)."""
+        try:
+            minutes = int(body.get("minutes") or 0)
+        except (TypeError, ValueError):
+            minutes = 0
+        if minutes <= 0:
+            return JSONResponse(status_code=422, content={"detail": "minutes muss > 0 sein"})
+
+        def mutator(cfg):
+            if user not in cfg.accounts:
+                raise KeyError(user)
+            acct = cfg.accounts[user]
+            now = app.state.now_fn()
+            day = usage_day(now, cfg.tracking.reset_hour if cfg.tracking else 0)
+            used_min = math.ceil(app.state.store.get(user, day) / 60)
+            base = acct.daily_budget_minutes if acct.daily_budget_minutes else used_min
+            acct.daily_budget_minutes = base + minutes
+
+        try:
+            return _write_accounts(mutator)
+        except KeyError:
+            return JSONResponse(status_code=404, content={"detail": f"kein Konto {user!r} konfiguriert"})
+
+    @app.post("/api/accounts/{user}/terminate")
+    def api_terminate(user: str):
+        """Aktive Session sofort beenden (loginctl terminate-user)."""
+        app.state.terminate_fn(user)
+        log.info("Panel: Session von %s manuell beendet", user)
+        return {"ok": True, "user": user}
+
+    @app.post("/api/accounts/{user}/internet")
+    def api_internet(user: str, body: dict):
+        """Internet an/aus schalten (schreibt Config, Daemon uebernimmt sofort)."""
+        enabled = bool(body.get("enabled"))
+
+        def mutator(cfg):
+            if user not in cfg.accounts:
+                raise KeyError(user)
+            cfg.accounts[user].internet_enabled = enabled
+
+        try:
+            return _write_accounts(mutator)
+        except KeyError:
+            return JSONResponse(status_code=404, content={"detail": f"kein Konto {user!r} konfiguriert"})
 
     def _write_accounts(mutator) -> JSONResponse:
         try:

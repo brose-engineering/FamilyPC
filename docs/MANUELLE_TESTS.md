@@ -94,3 +94,12 @@ Details: `docs/FAM-12_13_VM_TEST.md`.
 - [ ] `http://<ip>:8786` → 301 auf `https://<ip>:8787`; selbstsigniertes Zertifikat (Browser-Warnung dokumentiert)
 - [ ] `familypc.local` löst via Avahi auf; vom Handy im WLAN voll bedienbar (Login + Regeln + Live-Werte)
 - [ ] reboot-sicher
+
+## FAM-14 — Mobile UX & Quick-Actions
+
+Details: `docs/FAM-14_VM_TEST.md`.
+
+- [ ] ab 375 px Breite Kartenlayout, Touch-Ziele ≥ 44 px (DevTools 375×667 oder Handy im WLAN)
+- [ ] Quick-Actions je Konto: +15/+30/+60 min, „Session beenden", „Internet an/aus" — wirken ohne Daemon-Restart (Config-Reload im Journal)
+- [ ] Restzeit live per SSE ohne Reload (`/api/events`)
+- [ ] Verlängern in drei Taps; ohne Login keine Quick-Actions (401)

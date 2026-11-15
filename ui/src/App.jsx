@@ -121,12 +121,7 @@ export default function App() {
         return
       }
       setAuth((await who.json()).user)
-      const [s, c, u] = await Promise.all([api('/api/status'), api('/api/config'), api('/api/users')])
-      if (s.status === 401) {
-        setAuth(null)
-        return
-      }
-      setStatus(await s.json())
+      const [c, u] = await Promise.all([api('/api/config'), api('/api/users')])
       setConfig(await c.json())
       setUsers((await u.json()).users || [])
       setError(null)
@@ -137,9 +132,57 @@ export default function App() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 5000)
-    return () => clearInterval(t)
   }, [load])
+
+  // FAM-14: Live-Restzeiten per Server-Sent-Events (Fallback: Poll alle 5 s)
+  useEffect(() => {
+    if (!auth) return
+    let es = null
+    let poll = null
+    const startPoll = () => {
+      if (poll) return
+      poll = setInterval(async () => {
+        const r = await api('/api/status')
+        if (r.status === 200) setStatus(await r.json())
+      }, 5000)
+    }
+    try {
+      es = new EventSource('/api/events')
+      es.onmessage = (e) => setStatus(JSON.parse(e.data))
+      es.onerror = () => { es && es.close(); es = null; startPoll() }
+    } catch {
+      startPoll()
+    }
+    return () => { if (es) es.close(); if (poll) clearInterval(poll) }
+  }, [auth])
+
+  async function extend(user, minutes) {
+    const r = await api(`/api/accounts/${encodeURIComponent(user)}/extend`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ minutes }),
+    })
+    if (r.ok) {
+      setMsg(`${user}: +${minutes} min (neues Tagesbudget siehe Liste).`)
+      setConfig(await (await api('/api/config')).json())
+    } else setMsg(`Fehler: HTTP ${r.status}`)
+  }
+
+  async function terminateSession(user) {
+    if (!confirm(`Session von ${user} jetzt beenden?`)) return
+    const r = await api(`/api/accounts/${encodeURIComponent(user)}/terminate`, { method: 'POST' })
+    setMsg(r.ok ? `Session von ${user} beendet.` : `Fehler: HTTP ${r.status}`)
+  }
+
+  async function toggleInternet(user, enabled) {
+    const r = await api(`/api/accounts/${encodeURIComponent(user)}/internet`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    })
+    if (r.ok) {
+      setMsg(`Internet fuer ${user}: ${enabled ? 'an' : 'aus'}.`)
+      setConfig(await (await api('/api/config')).json())
+    } else setMsg(`Fehler: HTTP ${r.status}`)
+  }
 
   function startEdit(user) {
     setEditUser(user)
@@ -257,19 +300,32 @@ export default function App() {
           {status.accounts.map((a) => (
             <React.Fragment key={a.user}>
               <tr>
-                <td><b>{a.user}</b>{a.protected && <span className="tag">geschuetzt</span>}</td>
-                <td>{a.active ? <span className="tag on">aktiv</span> : <span className="tag">inaktiv</span>}</td>
-                <td>{a.pc.exhausted ? <span className="tag off">aufgebraucht</span> : fmtMin(a.pc.remaining_seconds)}
+                <td data-label="Konto"><b>{a.user}</b>{a.protected && <span className="tag">geschuetzt</span>}</td>
+                <td data-label="Status">{a.active ? <span className="tag on">aktiv</span> : <span className="tag">inaktiv</span>}</td>
+                <td data-label="PC-Restzeit">{a.pc.exhausted ? <span className="tag off">aufgebraucht</span> : fmtMin(a.pc.remaining_seconds)}
                   <div className="sub">verbraucht {fmtMin(a.pc.used_seconds)}</div></td>
-                <td>{!a.window.configured ? '—' : a.window.allowed_now ? `erlaubt bis ${a.window.current_end}` : 'ausserhalb'}
+                <td data-label="Fenster">{!a.window.configured ? '—' : a.window.allowed_now ? `erlaubt bis ${a.window.current_end}` : 'ausserhalb'}
                   {a.window.configured && a.window.today.length > 0 && (
                     <div className="sub">heute: {a.window.today.map((w) => `${w.start}-${w.end}`).join(', ')}</div>
                   )}</td>
-                <td>{a.internet.blocked_now ? <span className="tag off">gesperrt</span> : a.internet.enabled === false ? <span className="tag off">aus</span> : <span className="tag on">an</span>}</td>
-                <td>{fmtMin(a.internet.remaining_seconds)}<div className="sub">verbraucht {fmtMin(a.internet.used_seconds)}</div></td>
-                <td><button onClick={() => startEdit(a.user)}>Bearbeiten</button>{' '}
-                  <button onClick={() => reset(a.user)}>Zuruecksetzen</button>{' '}
-                  <button onClick={() => remove(a.user)}>Entfernen</button></td>
+                <td data-label="Internet">{a.internet.blocked_now ? <span className="tag off">gesperrt</span> : a.internet.enabled === false ? <span className="tag off">aus</span> : <span className="tag on">an</span>}</td>
+                <td data-label="Internet-Restzeit">{fmtMin(a.internet.remaining_seconds)}<div className="sub">verbraucht {fmtMin(a.internet.used_seconds)}</div></td>
+                <td data-label="Aktionen">
+                  <div className="qa">
+                    <button onClick={() => extend(a.user, 15)}>+15</button>
+                    <button onClick={() => extend(a.user, 30)}>+30</button>
+                    <button onClick={() => extend(a.user, 60)}>+60</button>
+                    <button onClick={() => terminateSession(a.user)}>Session beenden</button>
+                    <button onClick={() => toggleInternet(a.user, a.internet.enabled === false)}>
+                      Internet {a.internet.enabled === false ? 'an' : 'aus'}
+                    </button>
+                  </div>
+                  <div className="qa">
+                    <button onClick={() => startEdit(a.user)}>Bearbeiten</button>
+                    <button onClick={() => reset(a.user)}>Zuruecksetzen</button>
+                    <button onClick={() => remove(a.user)}>Entfernen</button>
+                  </div>
+                </td>
               </tr>
               {editUser === a.user && (
                 <tr className="editrow"><td colSpan={7}>
