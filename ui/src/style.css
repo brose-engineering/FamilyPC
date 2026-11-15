@@ -1,43 +1,142 @@
-body { font-family: system-ui, sans-serif; background: #f4f5f7; color: #1c1e21; margin: 0; }
-.wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
-h1 { font-size: 22px; }
-.meta { color: #606770; font-size: 12px; }
-.err { color: #b00020; }
-.msg { background: #e7f6e7; border: 1px solid #9ed09e; padding: 8px 12px; border-radius: 6px; }
-table { border-collapse: collapse; width: 100%; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
-th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #e4e6eb; vertical-align: top; font-size: 14px; }
-th { background: #f0f2f5; font-size: 12px; text-transform: uppercase; color: #606770; }
-.sub { color: #606770; font-size: 12px; }
-.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; background: #e4e6eb; font-size: 12px; }
-.tag.on { background: #d8f3dc; color: #1b5e20; }
-.tag.off { background: #f8d7da; color: #842029; }
-button { border: 1px solid #ccd0d5; background: #fff; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 13px; }
-button:hover { background: #f0f2f5; }
-.editrow td { background: #f8f9fb; }
-.edit label { display: block; margin: 8px 0; font-size: 13px; }
-.edit input[type="number"], .edit input:not([type]) { margin-left: 8px; padding: 5px 8px; border: 1px solid #ccd0d5; border-radius: 6px; width: 220px; }
-.edit .chk input { margin-right: 6px; }
-.windows label { display: inline-block; margin-right: 12px; }
-.windows input { width: 150px; }
-.add { margin: 10px 0 16px; }
-.add select { padding: 6px 10px; border: 1px solid #ccd0d5; border-radius: 6px; min-width: 260px; margin-right: 8px; }
-.login { max-width: 320px; }
-.login label { display: block; margin: 10px 0; font-size: 14px; }
-.login input { width: 100%; padding: 7px 10px; border: 1px solid #ccd0d5; border-radius: 6px; box-sizing: border-box; }
-.login button { margin-top: 10px; padding: 8px 16px; }
-.logout { float: right; font-size: 12px; font-weight: normal; }
+/* FamilyPC Admin-Panel — Theme angelehnt an docs/assets/familypc-banner.svg
+   (dunkler Space-Gradient, Akzent #38BDF8 -> #818CF8, Budget #34D399 -> #FBBF24) */
 
-/* FAM-14: Quick-Actions + Mobile (ab 375 px) */
+:root {
+  --bg0: #0b1220;
+  --bg1: #141b34;
+  --bg2: #2a1e5c;
+  --card: #16213c;
+  --card-border: #2e3a5c;
+  --accent0: #38bdf8;
+  --accent1: #818cf8;
+  --ok0: #34d399;
+  --ok1: #fbbf24;
+  --good: #4ade80;
+  --bad: #f87171;
+  --bad-strong: #ef4444;
+  --text: #e2e8f0;
+  --text-soft: #a5b4fc;
+  --muted: #7c8db0;
+  --track: #1e293b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background:
+    radial-gradient(900px 500px at 85% -10%, rgba(99, 102, 241, 0.35), transparent 60%),
+    linear-gradient(135deg, var(--bg0) 0%, var(--bg1) 55%, var(--bg2) 100%);
+  background-attachment: fixed;
+  color: var(--text);
+  margin: 0;
+  min-height: 100vh;
+}
+
+.wrap { max-width: 1100px; margin: 28px auto; padding: 0 16px 40px; }
+
+.brand {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+  background: linear-gradient(90deg, #ffffff, var(--text-soft));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.tagline { color: #c7d2fe; font-size: 15px; margin: 4px 0 0; }
+
+.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+
+.meta { color: var(--muted); font-size: 12px; }
+.err { color: var(--bad); }
+.msg {
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  color: #bbf7d0;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+table { border-collapse: separate; border-spacing: 0; width: 100%; background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35); }
+th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--card-border); vertical-align: top; font-size: 14px; }
+th { background: rgba(22, 33, 60, 0.85); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: rgba(56, 189, 248, 0.04); }
+
+.sub { color: var(--muted); font-size: 12px; }
+
+.tag { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; background: var(--track); color: var(--text); border: 1px solid var(--card-border); }
+.tag.on { background: rgba(52, 211, 153, 0.15); color: var(--ok0); border-color: rgba(52, 211, 153, 0.5); }
+.tag.off { background: rgba(248, 113, 113, 0.15); color: var(--bad); border-color: rgba(248, 113, 113, 0.5); }
+
+.bar { width: 160px; max-width: 100%; height: 12px; border-radius: 7px; background: var(--track); margin-top: 6px; overflow: hidden; }
+.bar > div { height: 100%; border-radius: 7px; background: linear-gradient(90deg, var(--ok0), var(--ok1)); transition: width 0.6s ease; }
+
+button {
+  border: 1px solid var(--card-border);
+  background: rgba(30, 41, 59, 0.6);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 7px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: transform 0.05s ease, background 0.15s ease, border-color 0.15s ease;
+}
+button:hover { background: rgba(56, 189, 248, 0.15); border-color: var(--accent0); }
+button:active { transform: scale(0.97); }
+button:disabled { opacity: 0.5; cursor: default; }
+
 .qa { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
 .qa button { min-height: 40px; }
+.qa button:first-child, .qa button:nth-child(2), .qa button:nth-child(3) {
+  background: linear-gradient(90deg, var(--accent0), var(--accent1));
+  border: none;
+  color: #fff;
+  font-weight: 600;
+}
+.qa button:first-child:hover, .qa button:nth-child(2):hover, .qa button:nth-child(3):hover { filter: brightness(1.12); }
+
+.logout { font-size: 12px; }
+
+.add { margin: 12px 0 18px; display: flex; gap: 8px; flex-wrap: wrap; }
+.add select {
+  padding: 8px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  min-width: 260px;
+  background: var(--card);
+  color: var(--text);
+}
+.add button { background: linear-gradient(90deg, var(--accent0), var(--accent1)); border: none; color: #fff; font-weight: 600; }
+
+.editrow td { background: rgba(11, 18, 32, 0.6); }
+.edit label { display: block; margin: 8px 0; font-size: 13px; color: var(--text-soft); }
+.edit input[type="number"], .edit input:not([type]) { margin-left: 8px; padding: 6px 9px; border: 1px solid var(--card-border); border-radius: 8px; width: 220px; background: var(--bg0); color: var(--text); }
+.edit .chk input { margin-right: 6px; }
+.edit .windows label { display: inline-block; margin-right: 12px; }
+.edit .windows input { width: 150px; }
+.edit button:first-of-type { background: linear-gradient(90deg, var(--accent0), var(--accent1)); border: none; color: #fff; font-weight: 600; }
+
+/* Login */
+.login { max-width: 340px; margin-top: 10vh; background: var(--card); border: 1px solid var(--card-border); border-radius: 16px; padding: 24px; box-shadow: 0 8px 30px rgba(0,0,0,.35); }
+.login .brand { font-size: 28px; }
+.login label { display: block; margin: 12px 0; font-size: 13px; color: var(--text-soft); }
+.login input { width: 100%; padding: 9px 11px; border: 1px solid var(--card-border); border-radius: 10px; background: var(--bg0); color: var(--text); margin-top: 4px; }
+.login button { margin-top: 14px; padding: 10px 18px; width: 100%; background: linear-gradient(90deg, var(--accent0), var(--accent1)); border: none; color: #fff; font-weight: 700; font-size: 15px; }
+
+/* FAM-14: Mobile (ab 375 px) — Kartenlayout */
 @media (max-width: 600px) {
   table, tbody, tr, td { display: block; width: 100%; }
   thead { display: none; }
-  tr { margin-bottom: 12px; border: 1px solid #e4e6eb; border-radius: 8px; background: #fff; padding: 6px 4px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-  td { border: none !important; padding: 4px 10px; }
-  td::before { content: attr(data-label); display: block; font-size: 11px; color: #606770; text-transform: uppercase; letter-spacing: .04em; }
+  tr { margin-bottom: 12px; border: 1px solid var(--card-border); border-radius: 14px; background: var(--card); padding: 8px 4px; box-shadow: 0 8px 30px rgba(0,0,0,.35); }
+  td { border: none !important; padding: 6px 12px; }
+  td::before { content: attr(data-label); display: block; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
   button { min-height: 44px; min-width: 44px; font-size: 15px; }
   .qa button { flex: 1 1 45%; }
+  .bar { width: 100%; }
   .edit input[type="number"], .edit input:not([type]) { width: 100%; margin-left: 0; margin-top: 4px; }
   .add select { width: 100%; margin-bottom: 6px; }
+  .brand { font-size: 26px; }
 }

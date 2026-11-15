@@ -63,7 +63,7 @@ function Login({ onLogin, err }) {
   const [busy, setBusy] = useState(false)
   return (
     <div className="wrap login">
-      <h1>FamilyPC Admin</h1>
+      <h1 className="brand">FamilyPC</h1>
       <p className="meta">Anmeldung mit Panel-Account (Eltern)</p>
       {err && <p className="err">{err}</p>}
       <label>Benutzer<br /><input value={user} onChange={(e) => setUser(e.target.value)} autoFocus /></label>
@@ -269,15 +269,28 @@ export default function App() {
     }
   }
 
-  if (auth === undefined) return <div className="wrap"><h1>FamilyPC Admin</h1><p>lade ...</p></div>
+  if (auth === undefined) return <div className="wrap"><h1 className="brand">FamilyPC</h1><p className="meta">lade ...</p></div>
   if (auth === null) return <Login onLogin={handleLogin} err={loginErr} />
-  if (error) return <div className="wrap"><h1>FamilyPC Admin</h1><p className="err">{error}</p></div>
-  if (!status) return <div className="wrap"><h1>FamilyPC Admin</h1><p>lade ...</p></div>
+  if (error) return <div className="wrap"><h1 className="brand">FamilyPC</h1><p className="err">{error}</p></div>
+  if (!status) return <div className="wrap"><h1 className="brand">FamilyPC</h1><p className="meta">lade ...</p></div>
 
   return (
     <div className="wrap">
-      <h1>FamilyPC Admin <button className="logout" onClick={handleLogout}>Abmelden ({auth})</button></h1>
-      <p className="meta">Stand {status.now} · Nutzungstag {status.day} · aktualisiert alle 5 s</p>
+      <header className="top">
+        <div>
+          <h1 className="brand">
+            <svg viewBox="0 0 52 82" width="26" height="41" aria-hidden="true" style={{ verticalAlign: '-8px', marginRight: 10 }}>
+              <path d="M26,2 L50,12 V38 C50,58 38,72 26,80 C14,72 2,58 2,38 V12 Z" fill="url(#shieldG)" stroke="#BBF7D0" strokeWidth="2"/>
+              <path d="M15,40 L23,49 L39,28" fill="none" stroke="#fff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+              <defs><linearGradient id="shieldG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#4ADE80"/><stop offset="1" stopColor="#16A34A"/></linearGradient></defs>
+            </svg>
+            FamilyPC
+          </h1>
+          <p className="tagline">Nutzungszeiten &amp; Internet-Sperre pro Nutzerkonto</p>
+        </div>
+        <button className="logout" onClick={handleLogout}>Abmelden ({auth})</button>
+      </header>
+      <p className="meta">Stand {status.now} · Nutzungstag {status.day} · live via SSE</p>
       {msg && <p className="msg">{msg}</p>}
       <div className="add">
         <select value={newUser} onChange={(e) => setNewUser(e.target.value)}>
@@ -303,6 +316,11 @@ export default function App() {
                 <td data-label="Konto"><b>{a.user}</b>{a.protected && <span className="tag">geschuetzt</span>}</td>
                 <td data-label="Status">{a.active ? <span className="tag on">aktiv</span> : <span className="tag">inaktiv</span>}</td>
                 <td data-label="PC-Restzeit">{a.pc.exhausted ? <span className="tag off">aufgebraucht</span> : fmtMin(a.pc.remaining_seconds)}
+                  {a.pc.budget_minutes ? (
+                    <div className="bar" title="Restzeit">
+                      <div style={{ width: `${Math.max(0, Math.min(100, (a.pc.remaining_seconds / (a.pc.budget_minutes * 60)) * 100))}%` }} />
+                    </div>
+                  ) : null}
                   <div className="sub">verbraucht {fmtMin(a.pc.used_seconds)}</div></td>
                 <td data-label="Fenster">{!a.window.configured ? '—' : a.window.allowed_now ? `erlaubt bis ${a.window.current_end}` : 'ausserhalb'}
                   {a.window.configured && a.window.today.length > 0 && (
