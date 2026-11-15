@@ -35,3 +35,13 @@ accounts: {}
   #     1: [{ start: "15:00", end: "19:00" }]
   #     5: [{ start: "09:00", end: "19:00" }]
   #     6: [{ start: "09:00", end: "19:00" }]
+
+# Admin-UI (FAM-10). Sektion weglassen = UI deaktiviert.
+# Bindung nur 127.0.0.1 (kein Netzwerkzugriff); Zugriff nur fuer Prozesse von
+# Mitgliedern der admin_groups (Default: sudo) — Admin-UI im Browser des Eltern-Kontos.
+# Aenderungen per UI schreiben diese Datei; der Daemon laedt sie automatisch neu (kein Neustart).
+ui:
+  enabled: true
+  host: 127.0.0.1
+  port: 8787
+  admin_groups: ["sudo"]

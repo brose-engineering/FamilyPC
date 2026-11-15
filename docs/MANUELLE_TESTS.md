@@ -66,6 +66,11 @@ Details: `docs/FAM-9_VM_TEST.md`. Verbrauch: Tabelle `internet_usage(day, user, 
 
 ## FAM-10 — Admin-UI
 
-- [ ] UI auf `127.0.0.1` nur aus Admin-Sitzung (sudo-Gruppe) erreichbar
-- [ ] Übersicht zeigt Restzeiten (PC + Internet) live
-- [ ] Budget im UI auf 5 min setzen → kind1 wird nach 5 min abgemeldet (ohne Daemon-Neustart)
+Details: `docs/FAM-10_VM_TEST.md`. UI: `http://127.0.0.1:8787` (nur Admin-Sitzung, sudo-Gruppe).
+
+- [ ] UI auf `127.0.0.1` nur aus Admin-Sitzung (sudo-Gruppe) erreichbar (`curl` als kind1 → 403, `ss -tlnp` zeigt nur 127.0.0.1:8787)
+- [ ] Übersicht zeigt Restzeiten (PC + Internet), Fenster- und Internet-Status live (5 s)
+- [ ] Budget im UI auf 5 min setzen → `Config neu geladen` im Journal → kind1 wird nach 5 min abgemeldet (ohne Daemon-Neustart)
+- [ ] Internet an/aus + Internet-Budget + Fenster je Wochentag per UI änderbar → nft/PAM wirken sofort
+- [ ] ungültige Eingabe (z. B. Fenster 19:00-15:00) → 422, Config-Datei bleibt unverändert
+- [ ] fail-open unverändert (Daemon-Stop → UI weg, PAM fail-open, nft-Tabelle weg)

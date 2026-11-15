@@ -24,8 +24,12 @@ apt-get install -y -qq python3-venv python3-pip nftables
 
 echo "==> Projekt nach $PREFIX kopieren ..."
 mkdir -p "$PREFIX"
-rm -rf "$PREFIX/familypc" "$PREFIX/pyproject.toml"
+rm -rf "$PREFIX/familypc" "$PREFIX/pyproject.toml" "$PREFIX/ui_static"
 cp -r "$SRC_DIR/familypc" "$SRC_DIR/pyproject.toml" "$PREFIX/"
+# FAM-10: gebautes React-Frontend (ui/dist -> familypc/ui_static im Repo) nach $PREFIX/ui_static
+if [[ -d "$SRC_DIR/familypc/ui_static" ]]; then
+  cp -r "$SRC_DIR/familypc/ui_static" "$PREFIX/ui_static"
+fi
 
 echo "==> venv erstellen und Paket installieren ..."
 python3 -m venv "$VENV"

@@ -41,6 +41,12 @@ class SessionTracker:
     def last_active_users(self) -> set[str]:
         return self._active_users
 
+    def update(self, config: TrackingConfig, internet_users: set[str] | None = None) -> None:
+        """FAM-10: Config-Reload ohne Neustart — Daemon ruft das pro Tick nach Datei-Aenderung auf."""
+        self.cfg = config
+        if internet_users is not None:
+            self._internet_users = internet_users
+
     def tick(self) -> None:
         now = self._now()
         if self._last_tick is None:

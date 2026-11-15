@@ -51,6 +51,11 @@ class Enforcer:
         self._uid_fn = uid_fn
         self.last_internet_blocked: set[int] = set()  # FAM-9: uids mit aufgebrauchtem Internet-Budget
 
+    def update(self, cfg: EnforcementConfig, accounts: dict[str, AccountConfig]) -> None:
+        """FAM-10: Config-Reload ohne Neustart (Control-Server haelt die Enforcer-Referenz)."""
+        self.cfg = cfg
+        self.accounts = accounts
+
     # ---------- Fenster-Logik ----------
 
     def _windows_today(self, acct: AccountConfig, now: datetime) -> list[tuple[int, int]]:

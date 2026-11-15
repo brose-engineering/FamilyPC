@@ -6,6 +6,7 @@ validiert trotzdem und der Daemon stürzt nicht ab.
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import Annotated, Literal, Optional
@@ -100,6 +101,21 @@ class EnforcementConfig(BaseModel):
     protected_users: list[str] = Field(default_factory=lambda: ["parent"])  # niemals sperren
 
 
+class UiConfig(BaseModel):
+    """Admin-UI (FAM-10). Sektion fehlt komplett = UI deaktiviert.
+
+    Bindung default auf 127.0.0.1 (kein Netzwerkzugriff); Zugriff nur fuer
+    Prozesse von Mitgliedern der Admin-Gruppen (Default: sudo).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = True
+    host: str = "127.0.0.1"
+    port: int = Field(default=8787, ge=1, le=65535)
+    admin_groups: list[str] = Field(default_factory=lambda: ["sudo"])
+
+
 class Config(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -107,6 +123,7 @@ class Config(BaseModel):
     tracking: Optional[TrackingConfig] = None  # None = Feature deaktiviert
     enforcement: Optional[EnforcementConfig] = None  # None = Feature deaktiviert
     accounts: dict[str, AccountConfig] = Field(default_factory=dict)
+    ui: Optional[UiConfig] = None  # None = UI deaktiviert
 
 
 def load_config(path: str | Path = DEFAULT_CONFIG_PATH) -> Config:
@@ -126,3 +143,26 @@ def load_config(path: str | Path = DEFAULT_CONFIG_PATH) -> Config:
         return Config.model_validate(raw)
     except ValidationError as exc:
         raise ConfigError(f"Ungültige Config in {config_path}:\n{exc}") from exc
+
+
+_HEADER = (
+    "# FamilyPC-Konfiguration — wird von install.sh nach /etc/familypc/config.yaml installiert.\n"
+    "# Aenderungen per Admin-UI (FAM-10) schreiben diese Datei atomar; der Daemon laedt sie automatisch neu.\n"
+    "# Konvention: Fehlende Felder = Feature deaktiviert, der Daemon startet trotzdem.\n"
+)
+
+
+def save_config(config: Config, path: str | Path = DEFAULT_CONFIG_PATH) -> None:
+    """Schreibt die Config atomar (temp-Datei + rename) als YAML — Kommentare gehen dabei verloren.
+
+    Wird von der Admin-UI (FAM-10) benutzt; der Daemon uebernimmt die Aenderung per mtime-Reload.
+    """
+    config_path = Path(path)
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    text = _HEADER + yaml.safe_dump(
+        config.model_dump(mode="json"), sort_keys=False, allow_unicode=True, default_flow_style=False
+    )
+    tmp = config_path.with_suffix(config_path.suffix + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.chmod(tmp, 0o640)
+    os.replace(tmp, config_path)

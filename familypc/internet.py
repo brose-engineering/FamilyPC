@@ -47,6 +47,12 @@ class InternetBlocker:
                 blocked.add(uid)
         return blocked
 
+    def update(self, accounts: dict[str, AccountConfig], protected_users: set[str]) -> None:
+        """FAM-10: Config-Reload ohne Neustart — _applied zuruecksetzen erzwingt Re-Sync."""
+        self.accounts = accounts
+        self.protected = protected_users
+        self._applied = None
+
     def sync(self, extra_blocked: set[int] | None = None) -> None:
         """Soll-Zustand = Config-Sperren (internet_enabled:false) + extra (FAM-9 Budget aufgebraucht)."""
         desired = self.desired_blocked_uids() | (extra_blocked or set())
