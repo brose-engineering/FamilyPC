@@ -36,6 +36,7 @@ fi
   sudo systemctl reset-failed familypc familypc-panel 2>&1 || true
   sudo systemctl restart familypc familypc-panel 2>&1 || true
   sleep 2
+  sudo systemctl restart avahi-daemon 2>&1 || true
   sudo systemctl status familypc --no-pager | head -4
   sudo systemctl status familypc-panel --no-pager | head -4
   echo
@@ -64,16 +65,28 @@ fi
     echo "OK: Passwort nicht im Log."
   fi
   echo
-  echo "--- Sperre-Test: lockout kurzzeitig auf 1 min, dann korrekter Login ---"
+  echo "--- Sperre-Test: lockout kurzzeitig auf 1 min (Config wird danach wiederhergestellt) ---"
   cp "$CONFIG" "$CONFIG.famtest.bak"
-  sudo sed -i 's/^\(\s*lockout_minutes:\s*\).*/\11/' "$CONFIG"
+  # robust via Config-API (alte Configs ohne lockout_minutes-Zeile: sed wuerde nicht greifen)
+  sudo /opt/familypc/venv/bin/python - "$CONFIG" <<'PY' || echo "PATCH FEHLGESCHLAGEN"
+import sys
+from familypc.config import load_config, save_config
+p = sys.argv[1]
+cfg = load_config(p)
+if cfg.ui is None:
+    raise SystemExit("keine ui-Sektion in Config")
+cfg.ui.lockout_minutes = 1
+save_config(cfg, p)
+PY
   sudo systemctl restart familypc-panel 2>&1 || true
+  sleep 2
   echo "warte 65 s ..."
   sleep 65
   code=$(curl -sk -c "$CJ" -o /dev/null -w '%{http_code}' -X POST "$BASE/api/login" -H 'Content-Type: application/json' -d "{\"username\":\"parent\",\"password\":\"$PANEL_PW\"}")
   echo "Login nach Sperre: $code (erwartet 200)"
   cp "$CONFIG.famtest.bak" "$CONFIG" && sudo rm -f "$CONFIG.famtest.bak"
   sudo systemctl restart familypc-panel 2>&1 || true
+  sleep 2
   echo "Config wiederhergestellt."
   echo
   echo "--- Cookies nach Login ---"
@@ -98,7 +111,8 @@ fi
   echo
   echo "--- FAM-13: HTTP->HTTPS Redirect + Avahi ---"
   curl -s -o /dev/null -w 'http://127.0.0.1:8786/ -> %{http_code} Location=%{redirect_url}\n' http://127.0.0.1:8786/
-  getent hosts familypc.local || echo "familypc.local loest nicht auf"
+  sudo systemctl status avahi-daemon --no-pager | head -4 || true
+  avahi-resolve -n familypc.local 2>/dev/null || getent hosts familypc.local || echo "familypc.local loest nicht auf (libnss-mdns installiert?)"
   curl -sk -o /dev/null -w 'https://familypc.local:8787/api/status: %{http_code} (erwartet 401 = erreichbar)\n' https://familypc.local:8787/api/status
   echo
   echo "--- Zertifikat ---"

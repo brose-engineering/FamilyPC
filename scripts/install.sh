@@ -20,7 +20,7 @@ fi
 
 echo "==> Systempakete (python3-venv, python3-pip, nftables, avahi-daemon, openssl) ..."
 apt-get update -qq
-apt-get install -y -qq python3-venv python3-pip nftables avahi-daemon openssl
+apt-get install -y -qq python3-venv python3-pip nftables avahi-daemon libnss-mdns openssl
 
 echo "==> Projekt nach $PREFIX kopieren ..."
 mkdir -p "$PREFIX"
