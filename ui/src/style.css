@@ -88,8 +88,10 @@ button:hover { background: rgba(56, 189, 248, 0.15); border-color: var(--accent0
 button:active { transform: scale(0.97); }
 button:disabled { opacity: 0.5; cursor: default; }
 
-.qa { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
+.qa { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; justify-content: center; }
 .qa button { min-height: 40px; }
+td[data-label="Aktionen"] { text-align: center; vertical-align: middle; }
+td[data-label="Aktionen"] .qa { max-width: 420px; margin-left: auto; margin-right: auto; }
 .qa button:first-child, .qa button:nth-child(2), .qa button:nth-child(3) {
   background: linear-gradient(90deg, var(--accent0), var(--accent1));
   border: none;
@@ -134,7 +136,10 @@ button:disabled { opacity: 0.5; cursor: default; }
   td { border: none !important; padding: 6px 12px; }
   td::before { content: attr(data-label); display: block; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
   button { min-height: 44px; min-width: 44px; font-size: 15px; }
-  .qa button { flex: 1 1 45%; }
+  /* Mobile: Buttons als zentrierte Kacheln statt rechter Spalte */
+  td[data-label="Aktionen"] .qa { max-width: none; }
+  .qa { justify-content: center; }
+  .qa button { flex: 0 1 118px; min-height: 48px; }
   .bar { width: 100%; }
   .edit input[type="number"], .edit input:not([type]) { width: 100%; margin-left: 0; margin-top: 4px; }
   .add select { width: 100%; margin-bottom: 6px; }
