@@ -67,3 +67,6 @@ Das Script macht `reset-failed` + Restart, testet 401 ohne Login, 5x Fehlversuch
 Sperre (lockout kurz auf 1 min), Login -> Session -> CSRF 403/200, Logout -> 401,
 HTTP->HTTPS-Redirect, `familypc.local` und listet die Panel-Accounts. Achtung: es setzt
 `lockout_minutes` temporaer auf 1 und stellt die Config danach wieder her.
+
+Hinweis: install.sh setzt `host-name=familypc` in `/etc/avahi/avahi-daemon.conf` — der PC
+antwortet im LAN als **familypc.local** (der bisherige `<hostname>.local`-Name entfaellt damit).

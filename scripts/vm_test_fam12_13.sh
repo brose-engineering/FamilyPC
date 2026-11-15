@@ -108,10 +108,10 @@ PY
   echo
   echo "--- FAM-10 im Panel: Status + Config-Aenderung ohne Daemon-Neustart ---"
   curl -sk -b "$CJ" "$BASE/api/status" | python3 -m json.tool | head -25
-  sudo journalctl -u familypc -n 10 --no-pager | grep -i 'Config neu geladen' || echo "(noch kein Reload)"
+  sudo journalctl -u familypc -n 30 --no-pager | grep -i 'Config neu geladen' || echo "(noch kein Reload)"
   echo
   echo "--- Logout ---"
-  curl -sk -b "$CJ" -X POST "$BASE/api/logout" -o /dev/null -w 'logout: %{http_code}\n'
+  curl -sk -b "$CJ" -H "X-CSRF-Token: $CSRF" -X POST "$BASE/api/logout" -o /dev/null -w 'logout: %{http_code} (erwartet 200)\n'
   curl -sk -b "$CJ" -o /dev/null -w 'GET /api/status nach Logout: %{http_code} (erwartet 401)\n' "$BASE/api/status"
   echo
   echo "--- FAM-13: HTTP->HTTPS Redirect + Avahi + mDNS ---"
@@ -119,7 +119,7 @@ PY
   sudo systemctl status avahi-daemon --no-pager | head -4 || true
   grep '^hosts' /etc/nsswitch.conf || true
   dpkg -l libnss-mdns 2>/dev/null | tail -1 || echo "libnss-mdns NICHT installiert — bitte install.sh ausfuehren!"
-  avahi-resolve -n familypc.local 2>/dev/null || getent hosts familypc.local || echo "familypc.local loest nicht auf"
+  avahi-resolve -n familypc.local 2>/dev/null || getent hosts familypc.local || echo "familypc.local loest nicht auf (host-name in avahi-daemon.conf? libnss-mdns installiert?)"
   curl -sk -o /dev/null -w 'https://familypc.local:8787/api/status: %{http_code} (erwartet 401 = erreichbar)\n' https://familypc.local:8787/api/status
   echo
   echo "--- Zertifikat ---"

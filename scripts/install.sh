@@ -81,7 +81,13 @@ if [[ ! -f /etc/familypc/panel.crt || ! -f /etc/familypc/panel.key ]]; then
   chmod 0600 /etc/familypc/panel.key
   echo "    Selbstsigniertes Zertifikat erzeugt: /etc/familypc/panel.crt (Browser-Warnung beim ersten Aufruf normal)"
 fi
-# Avahi/mDNS: Panel als familypc.local bekannt geben
+# Avahi/mDNS: Panel als familypc.local bekannt geben.
+# host-name=familypc -> der PC antwortet im LAN als familypc.local (statt <hostname>.local)
+if grep -qE '^\s*#?\s*host-name=' /etc/avahi/avahi-daemon.conf; then
+  sed -i -E 's|^\s*#?\s*host-name=.*|host-name=familypc|' /etc/avahi/avahi-daemon.conf
+else
+  echo "host-name=familypc" >> /etc/avahi/avahi-daemon.conf
+fi
 mkdir -p /etc/avahi/services
 cat > /etc/avahi/services/familypc.service <<'XML'
 <?xml version="1.0" standalone='no'?>
@@ -95,6 +101,8 @@ cat > /etc/avahi/services/familypc.service <<'XML'
 </service-group>
 XML
 systemctl enable --now avahi-daemon.service 2>/dev/null || true
+systemctl restart avahi-daemon.service 2>/dev/null || true
+echo "    Avahi: PC antwortet als familypc.local (host-name=familypc in avahi-daemon.conf)"
 
 PANEL_UNIT_SRC="$SRC_DIR/systemd/familypc-panel.service"
 PANEL_UNIT_DST=/etc/systemd/system/familypc-panel.service
