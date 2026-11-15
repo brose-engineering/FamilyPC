@@ -36,10 +36,15 @@ def build_ruleset(blocked_uids: set[int]) -> str:
         f"flush chain {FAMILY} {TABLE} input",
     ]
     for uid in sorted(blocked_uids):
-        # Loopback explizit erlauben (sonst haengt z. B. Cinnamon beim Session-Start)
+        # Loopback (v4+v6) explizit erlauben — sonst haengt der Session-Start.
+        # Rest im Output per reject statt drop: verworfene Pakete liessen Apps an
+        # DNS/mDNS-Timeouts haengen (schwarzer Screen bis zum Timeout), reject
+        # liefert sofort ECONNREFUSED/ICMP-Fehler. Input bleibt drop (kein lokaler Hänger).
         lines.append(f"add rule {FAMILY} {TABLE} output meta skuid {uid} ip daddr 127.0.0.0/8 accept")
+        lines.append(f"add rule {FAMILY} {TABLE} output meta skuid {uid} ip6 daddr ::1 accept")
+        lines.append(f"add rule {FAMILY} {TABLE} output meta skuid {uid} reject")
         lines.append(f"add rule {FAMILY} {TABLE} input  meta skuid {uid} ip saddr 127.0.0.0/8 accept")
-        lines.append(f"add rule {FAMILY} {TABLE} output meta skuid {uid} drop")
+        lines.append(f"add rule {FAMILY} {TABLE} input  meta skuid {uid} ip6 saddr ::1 accept")
         lines.append(f"add rule {FAMILY} {TABLE} input  meta skuid {uid} drop")
     return "\n".join(lines) + "\n"
 
