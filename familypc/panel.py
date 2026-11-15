@@ -450,17 +450,18 @@ def main(argv=None) -> int:
         cookie_secure=ui.tls_enabled,
     )
 
-    ssl_context = None
+    # uvicorn >= 0.54: kein ssl= mehr, sondern ssl_certfile/ssl_keyfile
+    ssl_kwargs = {}
     if ui.tls_enabled:
-        ssl_context = (str(ui.tls_cert), str(ui.tls_key))
+        ssl_kwargs = {"ssl_certfile": str(ui.tls_cert), "ssl_keyfile": str(ui.tls_key)}
 
     redirect = None
     if ui.http_port and ui.http_port != ui.port:
         redirect = HttpRedirect(ui.http_port, ui.port, host=ui.host)
         redirect.start()
 
-    log.info("Admin-Panel startet: %s://%s:%s (TLS=%s)", "https" if ssl_context else "http", ui.host, ui.port, ui.tls_enabled)
-    server = uvicorn.Server(uvicorn.Config(app, host=ui.host, port=ui.port, ssl=ssl_context, log_level="warning", access_log=False))
+    log.info("Admin-Panel startet: %s://%s:%s (TLS=%s)", "https" if ssl_kwargs else "http", ui.host, ui.port, ui.tls_enabled)
+    server = uvicorn.Server(uvicorn.Config(app, host=ui.host, port=ui.port, log_level="warning", access_log=False, **ssl_kwargs))
     try:
         server.run()
     finally:

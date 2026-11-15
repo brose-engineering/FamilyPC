@@ -244,6 +244,19 @@ def test_session_ablauf(tmp_path):
     assert client.get("/api/status").status_code == 401
 
 
+def test_uvicorn_config_tls_kwarg(tmp_path):
+    # Regression: uvicorn >= 0.54 kennt 'ssl=' nicht mehr — ssl_certfile/ssl_keyfile nutzen
+    import uvicorn
+    from fastapi import FastAPI
+
+    cfg = uvicorn.Config(
+        FastAPI(), host="127.0.0.1", port=0,
+        ssl_certfile=str(tmp_path / "panel.crt"), ssl_keyfile=str(tmp_path / "panel.key"),
+    )
+    assert cfg.ssl_certfile.endswith("panel.crt")
+    assert cfg.ssl_keyfile.endswith("panel.key")
+
+
 # ---------- Daemon-Config-Reload (unveraendert aus FAM-10) ----------
 
 def test_daemon_reload_ohne_neustart(tmp_path):
