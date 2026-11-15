@@ -136,6 +136,24 @@ export default function App() {
     }
   }
 
+  async function reset(user) {
+    if (!confirm(`Regeln fuer ${user} auf Standard zuruecksetzen (unbegrenzt, Internet an, keine Fenster)?`)) return
+    setMsg(null)
+    const r = await fetch(`/api/accounts/${encodeURIComponent(user)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ daily_budget_minutes: null, internet_enabled: null, internet_daily_budget_minutes: null, windows: {} }),
+    })
+    if (!r.ok) {
+      setMsg(`Fehler: HTTP ${r.status}`)
+      return
+    }
+    setConfig(await (await fetch('/api/config')).json())
+    setMsg(`Regeln fuer ${user} auf Standard zurueckgesetzt.`)
+    if (editUser === user) startEdit(user)
+    load()
+  }
+
   async function remove(user) {
     if (!confirm(`Regeln fuer ${user} wirklich entfernen?`)) return
     const r = await fetch(`/api/accounts/${encodeURIComponent(user)}`, { method: 'DELETE' })
@@ -189,6 +207,7 @@ export default function App() {
                 <td>{a.internet.blocked_now ? <span className="tag off">gesperrt</span> : a.internet.enabled === false ? <span className="tag off">aus</span> : <span className="tag on">an</span>}</td>
                 <td>{fmtMin(a.internet.remaining_seconds)}<div className="sub">verbraucht {fmtMin(a.internet.used_seconds)}</div></td>
                 <td><button onClick={() => startEdit(a.user)}>Bearbeiten</button>{' '}
+                  <button onClick={() => reset(a.user)}>Zuruecksetzen</button>{' '}
                   <button onClick={() => remove(a.user)}>Entfernen</button></td>
               </tr>
               {editUser === a.user && (

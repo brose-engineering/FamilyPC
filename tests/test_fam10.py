@@ -133,6 +133,16 @@ def test_put_legt_neues_konto_an(tmp_path):
     assert load_config(path).accounts["kind9"].daily_budget_minutes == 45
 
 
+def test_put_reset_auf_standard(tmp_path):
+    app, path, _ = make_app(tmp_path)
+    client = TestClient(app)
+    r = client.put("/api/accounts/kind1", json={"daily_budget_minutes": None, "internet_enabled": None, "internet_daily_budget_minutes": None, "windows": {}})
+    assert r.status_code == 200, r.text
+    acct = load_config(path).accounts["kind1"]
+    assert acct.daily_budget_minutes is None and acct.internet_enabled is None
+    assert acct.internet_daily_budget_minutes is None and acct.windows == {}
+
+
 def test_delete_account(tmp_path):
     app, path, _ = make_app(tmp_path)
     client = TestClient(app)
